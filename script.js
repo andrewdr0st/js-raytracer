@@ -1,8 +1,9 @@
+
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 const blackBorders = false;
-const pixelScaleFactor = 8;
+const pixelScaleFactor = 4;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -63,4 +64,13 @@ function loop(currentTime) {
     requestAnimationFrame(loop);
 }
 
-requestAnimationFrame(loop);
+//requestAnimationFrame(loop);
+async function runGPUThing() {
+    if (await setupGPUDevice()) {
+        renderGPU(camera)
+    } else {
+        console.log("NOOOO");
+    }
+}
+
+runGPUThing();
