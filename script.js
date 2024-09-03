@@ -65,9 +65,19 @@ function loop(currentTime) {
 }
 
 //requestAnimationFrame(loop);
+
 async function runGPUThing() {
     if (await setupGPUDevice()) {
-        renderGPU(camera)
+        let imgColors = await renderGPU(camera);
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                let i = (x + y * w) * 3;
+                let c = [imgColors[i], imgColors[i + 1], imgColors[i + 2]];
+                colorPixel(imageData, x, y, c);
+            }
+        }
+        tmpCtx.putImageData(imageData, 0, 0);
+        ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
     } else {
         console.log("NOOOO");
     }

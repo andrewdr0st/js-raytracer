@@ -38,7 +38,7 @@ class Camera {
             for (let x = 0; x < this.imgW; x++) {
                 let pCenter = vadd(this.topLeftPixel, vadd(vscalar(this.pixelDeltaU, x), vscalar(this.pixelDeltaV, y)));
                 let rayDir = vsub(pCenter, this.pos);
-                let r = new Ray(this.pos, rayDir)
+                let r = new Ray(this.pos, rayDir);
                 let c = rayColor(r);
                 colorPixel(imgData, x, y, c);
             }
