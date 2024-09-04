@@ -43,7 +43,7 @@ let fps = 0;
 let cameraTilt = 0;
 let ctd = 10;
 
-function loop(currentTime) {
+async function loop(currentTime) {
     const deltaTime = (currentTime - lastFrameTime) * 0.001;
     lastFrameTime = currentTime;
 
@@ -54,9 +54,11 @@ function loop(currentTime) {
     camera.lookAt[1] = Math.tan(deg2rad(cameraTilt));
     camera.init();
 
-    camera.render(imageData);
-    tmpCtx.putImageData(imageData, 0, 0);
-    ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
+    //camera.render(imageData);
+    //tmpCtx.putImageData(imageData, 0, 0);
+    //ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
+
+    await runGPUThing()
 
     fps = 1 / deltaTime;
     console.log(`FPS: ${Math.round(fps)}`);
@@ -64,23 +66,23 @@ function loop(currentTime) {
     requestAnimationFrame(loop);
 }
 
-//requestAnimationFrame(loop);
-
-async function runGPUThing() {
+async function initGPU() {
     if (await setupGPUDevice()) {
-        let imgColors = await renderGPU(camera);
-        for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-                let i = (x + y * w) * 3;
-                let c = [imgColors[i], imgColors[i + 1], imgColors[i + 2]];
-                colorPixel(imageData, x, y, c);
-            }
-        }
-        tmpCtx.putImageData(imageData, 0, 0);
-        ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
-    } else {
-        console.log("NOOOO");
+        requestAnimationFrame(loop);
     }
 }
 
-runGPUThing();
+async function runGPUThing() {
+    let imgColors = await renderGPU(camera);
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            let i = (x + y * w) * 3;
+            let c = [imgColors[i], imgColors[i + 1], imgColors[i + 2]];
+            colorPixel(imageData, x, y, c);
+        }
+    }
+    tmpCtx.putImageData(imageData, 0, 0);
+    ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
+}
+
+initGPU();
