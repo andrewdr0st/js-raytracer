@@ -16,9 +16,7 @@ async function setupGPUDevice(canvas) {
         label: "Raytrace module",
         code: `
             struct cameraData {
-                imgDim: vec2<u32>,
                 pos: vec3<f32>,
-                lookAt: vec3<f32>,
                 topLeftPixel: vec3<f32>,
                 pixelDeltaU: vec3<f32>, 
                 pixelDeltaV: vec3<f32>
@@ -77,15 +75,13 @@ async function renderGPU(camera) {
 
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
-        size: 96,
+        size: 64,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(cameraBuffer, 0, new Uint32Array([camera.imgW, camera.imgH]));
-    device.queue.writeBuffer(cameraBuffer, 16, new Float32Array(camera.pos));
-    device.queue.writeBuffer(cameraBuffer, 32, new Float32Array(camera.pos));
-    device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(camera.topLeftPixel));
-    device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(camera.pixelDeltaU));
-    device.queue.writeBuffer(cameraBuffer, 80, new Float32Array(camera.pixelDeltaV));
+    device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera.pos));
+    device.queue.writeBuffer(cameraBuffer, 16, new Float32Array(camera.topLeftPixel));
+    device.queue.writeBuffer(cameraBuffer, 32, new Float32Array(camera.pixelDeltaU));
+    device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(camera.pixelDeltaV));
 
     const uniformBindGroup = device.createBindGroup({
         layout: pipeline.getBindGroupLayout(0),
