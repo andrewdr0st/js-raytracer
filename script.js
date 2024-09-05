@@ -1,6 +1,6 @@
 
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
 const pixelScaleFactor = 4;
@@ -25,18 +25,15 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let imageData = ctx.createImageData(w, h);
-
 let camera = new Camera([0, 0, 0], [0, 0, -1], w, h, 90.0);
 
 const tempCanvas = document.createElement('canvas');
 tempCanvas.width = w;
-tempCanvas.height = h
-const tmpCtx = tempCanvas.getContext('2d');
+tempCanvas.height = h;
 
-camera.render(imageData);
-tmpCtx.putImageData(imageData, 0, 0);
-ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
+//camera.render(imageData);
+//tmpCtx.putImageData(imageData, 0, 0);
+//ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
 
 let lastFrameTime = 0;
 let fps = 0;
@@ -54,11 +51,9 @@ async function loop(currentTime) {
     camera.lookAt[1] = Math.tan(deg2rad(cameraTilt));
     camera.init();
 
-    //camera.render(imageData);
-    //tmpCtx.putImageData(imageData, 0, 0);
-    //ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
+    await runGPUThing();
 
-    await runGPUThing()
+    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
 
     fps = 1 / deltaTime;
     console.log(`FPS: ${Math.round(fps)}`);
@@ -67,22 +62,13 @@ async function loop(currentTime) {
 }
 
 async function initGPU() {
-    if (await setupGPUDevice()) {
+    if (await setupGPUDevice(tempCanvas)) {
         requestAnimationFrame(loop);
     }
 }
 
 async function runGPUThing() {
-    let imgColors = await renderGPU(camera);
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            let i = (x + y * w) * 3;
-            let c = [imgColors[i], imgColors[i + 1], imgColors[i + 2]];
-            colorPixel(imageData, x, y, c);
-        }
-    }
-    tmpCtx.putImageData(imageData, 0, 0);
-    ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
+    await renderGPU(camera);
 }
 
 initGPU();
