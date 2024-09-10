@@ -20,6 +20,10 @@ if (!blackBorders) {
 const canvasW = ctx.canvas.width;
 const canvasH = ctx.canvas.height;
 
+canvas.onclick = () => {
+    canvas.requestPointerLock();
+}
+
 ctx.imageSmoothingEnabled = false;
 
 const w = Math.floor(canvasW / pixelScaleFactor);
