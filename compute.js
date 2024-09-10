@@ -87,7 +87,7 @@ async function setupGPUDevice(canvas) {
     return true;
 }
 
-async function renderGPU(camera) {
+async function renderGPU(camera, sphereList) {
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
         size: 64,
@@ -114,7 +114,11 @@ async function renderGPU(camera) {
         ]
     });
 
-    let spheres = new Float32Array([0, 0, -1, 0.5, 1, 1, 1, 1, -2, 0.5, -4, 0.75, 0.25, 0.25, 1, 1, 0, 4, 5, 0.5, 1, 0, 0, 1]);
+    let spheres = [];
+    for (let i = 0; i < sphereList.length; i++) {
+        spheres = spheres.concat(sphereList[i].getValues());
+    }
+    spheres = new Float32Array(spheres);
 
     const spheresBuffer = device.createBuffer({
         label: "spheres buffer",

@@ -31,9 +31,40 @@ const tempCanvas = document.createElement('canvas');
 tempCanvas.width = w;
 tempCanvas.height = h;
 
-//camera.render(imageData);
-//tmpCtx.putImageData(imageData, 0, 0);
-//ctx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, canvasW, canvasH);
+let cameraZVel = 0;
+let cameraXVel = 0;
+
+document.addEventListener("keydown", (e) => {
+    if (e.key == 'w') {
+        cameraZVel = -1;
+    } else if (e.key == 's') {
+        cameraZVel = 1;
+    } else if (e.key == 'a') {
+        cameraXVel = -1;
+    } else if (e.key == 'd') {
+        cameraXVel = 1;
+    }
+});
+
+document.addEventListener("keyup", (e) => {
+    if (e.key == 'w') {
+        cameraZVel = 0;
+    } else if (e.key == 's') {
+        cameraZVel = 0;
+    } else if (e.key == 'a') {
+        cameraXVel = 0;
+    } else if (e.key == 'd') {
+        cameraXVel = 0;
+    }
+});
+
+let sphereList = [
+    new Sphere(0, 0, -1, 0.5, 1, 1, 1),
+    new Sphere(-2, 1, -3, 0.75, 0, 0, 1),
+    new Sphere(0, 10, -20, 8, 1, 1, 0.5),
+    new Sphere(0, 3, 4, 0.5, 1, 0, 0),
+    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5)
+];
 
 let lastFrameTime = 0;
 let fps = 0;
@@ -49,6 +80,12 @@ async function loop(currentTime) {
         ctd *= -1;
     }
     //camera.lookAt[1] = Math.tan(deg2rad(cameraTilt));
+    let cameraZMove = cameraZVel * deltaTime;
+    let cameraXMove = cameraXVel * deltaTime;
+    camera.pos[2] = camera.pos[2] + cameraZMove;
+    camera.pos[0] = camera.pos[0] + cameraXMove;
+    camera.lookAt[2] = camera.pos[2] - 1;
+    camera.lookAt[0] = camera.pos[0];
     camera.init();
 
     await runGPUThing();
@@ -56,7 +93,7 @@ async function loop(currentTime) {
     ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
 
     fps = 1 / deltaTime;
-    console.log(`FPS: ${Math.round(fps)}`);
+    //console.log(`FPS: ${Math.round(fps)}`);
 
     requestAnimationFrame(loop);
 }
@@ -68,7 +105,7 @@ async function initGPU() {
 }
 
 async function runGPUThing() {
-    await renderGPU(camera);
+    await renderGPU(camera, sphereList);
 }
 
 initGPU();
