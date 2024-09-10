@@ -25,7 +25,7 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let camera = new Camera([0, 0, 0], [0, 0, -1], w, h, 90.0);
+let camera = new Camera([0, 0, 0], [0, 0,-1], w, h, 90.0);
 
 const tempCanvas = document.createElement('canvas');
 tempCanvas.width = w;
@@ -48,7 +48,7 @@ async function loop(currentTime) {
     if ((cameraTilt > 45 && ctd > 0) || (cameraTilt < -45 && ctd < 0)) {
         ctd *= -1;
     }
-    camera.lookAt[1] = Math.tan(deg2rad(cameraTilt));
+    //camera.lookAt[1] = Math.tan(deg2rad(cameraTilt));
     camera.init();
 
     await runGPUThing();

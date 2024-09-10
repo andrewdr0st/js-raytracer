@@ -31,30 +31,40 @@ async function setupGPUDevice(canvas) {
                 let ray = pCenter - camera.pos;
                 var col: vec4<f32> = vec4<f32>(0, 0, 0, 1);
                 let sphereCount = arrayLength(&spheres);
-                var closestHit: f32 = 10000.0;
+                var tMin: f32 = 0.0001;
+                var tMax: f32 = 10000.0;
 
                 for (var i: u32 = 0; i < sphereCount; i += 2) {
                     let sphere = spheres[i];
                     let center: vec3<f32> = sphere.xyz;
                     let radius: f32 = sphere.w;
 
-                    let discriminant = hitSphere(center, radius, camera.pos, ray);
+                    let root = hitSphere(center, radius, camera.pos, ray, tMin, tMax);
 
-                    col = select(col, spheres[i + 1], discriminant < closestHit);
-                    closestHit = min(closestHit, discriminant);
+                    if (root >= 0 && root < tMax) {
+                        tMax = root;
+                        col = spheres[i + 1];
+                    }
                 }
 
                 textureStore(tex, id.xy, col);
             }
 
-            fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f) -> f32 {
+            fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> f32 {
                 let oc = center - orig;
                 let a = dot(dir, dir);
                 let h = dot(dir, oc);
                 let c = dot(oc, oc) - r * r;
                 let d = h * h - a * c;
-
-                return select((h - sqrt(d)) / a, -1.0, d >= 0);
+                let sqrtd = sqrt(d);
+                var root = (h - sqrtd) / a;
+                if (root <= tMin || root >= tMax) {
+                    root = (h + sqrtd) / a;
+                    if (root <= tMin || root >= tMax) {
+                        return -1.0;
+                    }
+                }
+                return root;
             }
         `
     });
@@ -104,7 +114,7 @@ async function renderGPU(camera) {
         ]
     });
 
-    let spheres = new Float32Array([0, 0, -1, 0.5, 1, 1, 1, 1, -2, 0.5, -4, 0.75, 0.25, 0.25, 1, 1]);
+    let spheres = new Float32Array([0, 0, -1, 0.5, 1, 1, 1, 1, -2, 0.5, -4, 0.75, 0.25, 0.25, 1, 1, 0, 4, 5, 0.5, 1, 0, 0, 1]);
 
     const spheresBuffer = device.createBuffer({
         label: "spheres buffer",
