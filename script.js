@@ -37,6 +37,8 @@ tempCanvas.height = h;
 
 let cameraFVel = 0;
 let cameraRVel = 0;
+let moveSpeed = 1.5;
+
 let cameraTheta = Math.PI;
 let cameraPhi = 0;
 let cameraPhiBound = Math.PI * 0.45;
@@ -106,9 +108,9 @@ async function loop(currentTime) {
     const deltaTime = (currentTime - lastFrameTime) * 0.001;
     lastFrameTime = currentTime;
 
-    camera.pos = vadd(camera.pos, vscalar(camera.forward, cameraFVel * deltaTime));
-    camera.pos = vadd(camera.pos, vscalar(camera.right, cameraRVel * deltaTime));
-    
+    let moveVec = vnorm(vadd(vscalar(camera.forward, cameraFVel), vscalar(camera.right, cameraRVel)));
+    camera.pos = vadd(camera.pos, vscalar(moveVec, deltaTime * moveSpeed));
+
     camera.lookTo = [Math.sin(cameraTheta), Math.sin(cameraPhi), Math.cos(cameraTheta)];
     camera.init();
 

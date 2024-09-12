@@ -28,6 +28,9 @@ function vlen2(v) {
 }
 
 function vnorm(v) {
+    if (vlen(v) == 0) {
+        return [0, 0, 0];
+    }
     return vscalar(v, 1 / vlen(v));
 }
 
