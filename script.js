@@ -95,13 +95,10 @@ async function loop(currentTime) {
     if ((cameraTilt > 45 && ctd > 0) || (cameraTilt < -45 && ctd < 0)) {
         ctd *= -1;
     }
-    //camera.lookAt[1] = Math.tan(deg2rad(cameraTilt));
     let cameraZMove = cameraZVel * deltaTime;
     let cameraXMove = cameraXVel * deltaTime;
     camera.pos[2] = camera.pos[2] + cameraZMove;
     camera.pos[0] = camera.pos[0] + cameraXMove;
-    camera.lookAt[2] = camera.pos[2] - 1;
-    camera.lookAt[0] = camera.pos[0];
     camera.init();
 
     await runGPUThing();
