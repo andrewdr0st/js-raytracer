@@ -4,6 +4,8 @@ let raytraceModule;
 let pipeline;
 let computeContext;
 
+const workgroupX = 64;
+
 async function setupGPUDevice(canvas) {
     adapter = await navigator.gpu?.requestAdapter();
     device = await adapter?.requestDevice();
@@ -16,10 +18,10 @@ async function setupGPUDevice(canvas) {
         label: "Raytrace module",
         code: `
             struct cameraData {
-                pos: vec3<f32>,
-                topLeftPixel: vec3<f32>,
-                pixelDeltaU: vec3<f32>, 
-                pixelDeltaV: vec3<f32>
+                pos: vec3f,
+                topLeftPixel: vec3f,
+                pixelDeltaU: vec3f, 
+                pixelDeltaV: vec3f
             };
 
             struct triangle {
@@ -36,13 +38,17 @@ async function setupGPUDevice(canvas) {
 
             @group(0) @binding(0) var<uniform> camera: cameraData;
             @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
-            @group(2) @binding(0) var<storage, read> spheres: array<vec4<f32>>;
+            @group(2) @binding(0) var<storage, read> spheres: array<vec4f>;
             @group(2) @binding(1) var<storage, read> triangles: array<triangle>;
 
-            @compute @workgroup_size(1, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3<u32>) {
+            @compute @workgroup_size(${workgroupX}, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
+                if (id.x > textureDimensions(tex).x) {
+                    return;
+                }
+
                 let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
                 let ray = pCenter - camera.pos;
-                var col: vec4<f32> = vec4<f32>(0, 0, 0, 1);
+                var col: vec4f = vec4f(0, 0, 0, 1);
                 let sphereCount = arrayLength(&spheres);
                 let triCount = arrayLength(&triangles);
                 var tMin: f32 = 0.0001;
@@ -50,7 +56,7 @@ async function setupGPUDevice(canvas) {
 
                 for (var i: u32 = 0; i < sphereCount; i += 2) {
                     let sphere = spheres[i];
-                    let center: vec3<f32> = sphere.xyz;
+                    let center: vec3f = sphere.xyz;
                     let radius: f32 = sphere.w;
 
                     let root = hitSphere(center, radius, camera.pos, ray, tMin, tMax);
@@ -205,7 +211,7 @@ async function renderGPU(camera, sphereList, triangleList) {
     pass.setBindGroup(0, uniformBindGroup);
     pass.setBindGroup(1, textureBindGroup);
     pass.setBindGroup(2, objectsBindGroup);
-    pass.dispatchWorkgroups(camera.imgW, camera.imgH);
+    pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
     pass.end();
 
     const commandBuffer = encoder.finish();
