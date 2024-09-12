@@ -1,7 +1,9 @@
 class Camera {
-    constructor(pos, forward, imgW, imgH, fov) {
+    constructor(pos, lookTo, imgW, imgH, fov) {
         this.pos = pos;
-        this.forward = forward;
+        this.lookTo = lookTo;
+        this.forward;
+        this.right;
         this.imgW = imgW;
         this.imgH = imgH;
 
@@ -17,7 +19,10 @@ class Camera {
         this.viewportH = 2.0 * h * this.focusDist;
         this.viewportW = this.viewportH * (this.imgW / this.imgH);
 
-        this.lookAt = vadd(this.pos, this.forward);
+        this.lookTo = vnorm(this.lookTo);
+        this.lookAt = vadd(this.pos, this.lookTo);
+        this.right = vnorm(vcross(this.lookTo, this.up));
+        this.forward = vnorm(vcross(this.up, this.right));
 
         let w = vnorm(vsub(this.pos, this.lookAt));
         let u = vnorm(vcross(this.up, w));

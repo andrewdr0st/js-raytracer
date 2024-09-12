@@ -29,6 +29,11 @@ async function setupGPUDevice(canvas) {
                 col: vec4f
             };
 
+            struct hitRec {
+                t: f32,
+                h: bool
+            };
+
             @group(0) @binding(0) var<uniform> camera: cameraData;
             @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
             @group(2) @binding(0) var<storage, read> spheres: array<vec4<f32>>;
@@ -58,8 +63,10 @@ async function setupGPUDevice(canvas) {
 
                 for (var i: u32 = 0; i < triCount; i++) {
                     let tri = triangles[i];
-                    if (hitTriangle(tri, camera.pos, ray, tMin, tMax)) {
+                    let hr = hitTriangle(tri, camera.pos, ray, tMax);
+                    if (hr.h) {
                         col = tri.col;
+                        tMax = hr.t;
                     }
                 }
 
@@ -92,17 +99,21 @@ async function setupGPUDevice(canvas) {
                 return numerator / denominator;
             }
 
-            fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> bool {
+            fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
+                var hr: hitRec;
+                hr.h = false;
                 let n = normalize(cross(tri.b - tri.a, tri.c - tri.a));
                 let t = hitPlane(n, tri.a, orig, dir);
-                if (t < 0 || t <= tMin || t >= tMax) {
-                    return false;
+                if (t < 0 || t >= tMax) {
+                    return hr;
                 }
+                hr.t = t;
                 let p = orig + t * dir;
                 let na = cross(tri.c - tri.b, p - tri.b);
                 let nb = cross(tri.a - tri.c, p - tri.c);
                 let nc = cross(tri.b - tri.a, p - tri.a);
-                return dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
+                hr.h = dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
+                return hr;
             }
         `
     });

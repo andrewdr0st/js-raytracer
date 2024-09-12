@@ -35,31 +35,48 @@ const tempCanvas = document.createElement('canvas');
 tempCanvas.width = w;
 tempCanvas.height = h;
 
-let cameraZVel = 0;
-let cameraXVel = 0;
+let cameraFVel = 0;
+let cameraRVel = 0;
+let cameraTheta = Math.PI;
+let cameraPhi = 0;
+let cameraPhiBound = Math.PI * 0.45;
+let sensitivity = 0.005;
 
 document.addEventListener("keydown", (e) => {
     if (e.key == 'w') {
-        cameraZVel = -1;
+        cameraFVel = 1;
     } else if (e.key == 's') {
-        cameraZVel = 1;
+        cameraFVel = -1;
     } else if (e.key == 'a') {
-        cameraXVel = -1;
+        cameraRVel = -1;
     } else if (e.key == 'd') {
-        cameraXVel = 1;
+        cameraRVel = 1;
     }
 });
 
 document.addEventListener("keyup", (e) => {
     if (e.key == 'w') {
-        cameraZVel = 0;
+        cameraFVel = 0;
     } else if (e.key == 's') {
-        cameraZVel = 0;
+        cameraFVel = 0;
     } else if (e.key == 'a') {
-        cameraXVel = 0;
+        cameraRVel = 0;
     } else if (e.key == 'd') {
-        cameraXVel = 0;
+        cameraRVel = 0;
     }
+});
+
+document.addEventListener("mousemove", (e) => {
+    let deltaTheta = -e.movementX * sensitivity;
+    cameraTheta += deltaTheta;
+    if (cameraTheta < -Math.PI) {
+        cameraTheta += Math.PI * 2;
+    } else if (cameraTheta > Math.PI) {
+        cameraTheta -= Math.PI * 2;
+    }
+    let deltaPhi = -e.movementY * sensitivity;
+    cameraPhi += deltaPhi;
+    cameraPhi = Math.min(Math.max(cameraPhi, -cameraPhiBound), cameraPhiBound);
 });
 
 let sphereList = [
@@ -84,21 +101,15 @@ let triList = [
 
 let lastFrameTime = 0;
 let fps = 0;
-let cameraTilt = 0;
-let ctd = 10;
 
 async function loop(currentTime) {
     const deltaTime = (currentTime - lastFrameTime) * 0.001;
     lastFrameTime = currentTime;
 
-    cameraTilt += ctd * deltaTime;
-    if ((cameraTilt > 45 && ctd > 0) || (cameraTilt < -45 && ctd < 0)) {
-        ctd *= -1;
-    }
-    let cameraZMove = cameraZVel * deltaTime;
-    let cameraXMove = cameraXVel * deltaTime;
-    camera.pos[2] = camera.pos[2] + cameraZMove;
-    camera.pos[0] = camera.pos[0] + cameraXMove;
+    camera.pos = vadd(camera.pos, vscalar(camera.forward, cameraFVel * deltaTime));
+    camera.pos = vadd(camera.pos, vscalar(camera.right, cameraRVel * deltaTime));
+    
+    camera.lookTo = [Math.sin(cameraTheta), Math.sin(cameraPhi), Math.cos(cameraTheta)];
     camera.init();
 
     await runGPUThing();
