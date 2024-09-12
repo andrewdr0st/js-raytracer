@@ -67,7 +67,19 @@ let sphereList = [
     new Sphere(-2, 1, -3, 0.75, 0, 0, 1),
     new Sphere(0, 10, -20, 8, 1, 1, 0.5),
     new Sphere(0, 3, 4, 0.5, 1, 0, 0),
-    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5)
+    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5),
+    new Sphere(-2, 0.3, -1, 0.2, 0.1, 0.1, 0.3),
+    new Sphere(-2, 0.3, -0.85, 0.1, 0, 0, 0.1)
+];
+[-3, 0, -1, 1, -1, 0, -1, 1, -2, 1, -1, 1, 0, 0.5, 0, 1]
+let triList = [
+    new Triangle(-3, 0, -1, -1, 0, -1, -2, 1, -1, 0, 0.5, 0),
+    new Triangle(5.5, -4, -4, 6, -2, -3, 5.5, -2, -4, 0.5, 0.2, 0),
+    new Triangle(5.5, -4, -4, 6, -4, -3, 6, -2, -3, 0.5, 0.2, 0),
+    new Triangle(6, -4, -3, 8, -2, -3, 6, -2, -3, 0.4, 0.1, 0),
+    new Triangle(6, -4, -3, 8, -4, -3, 8, -2, -3, 0.4, 0.1, 0),
+    new Triangle(6, -2, -3, 8, -2, -4, 5.5, -2, -4, 0.2, 0.8, 0.1),
+    new Triangle(6, -2, -3, 8, -2, -3, 8, -2, -4, 0.2, 0.8, 0.1)
 ];
 
 let lastFrameTime = 0;
@@ -109,7 +121,7 @@ async function initGPU() {
 }
 
 async function runGPUThing() {
-    await renderGPU(camera, sphereList);
+    await renderGPU(camera, sphereList, triList);
 }
 
 initGPU();

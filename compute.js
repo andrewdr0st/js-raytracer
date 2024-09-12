@@ -58,9 +58,7 @@ async function setupGPUDevice(canvas) {
 
                 for (var i: u32 = 0; i < triCount; i++) {
                     let tri = triangles[i];
-                    let n = normalize(cross(tri.b - tri.a, tri.c - tri.a));
-                    let t = hitPlane(n, tri.a, camera.pos, ray);
-                    if (t >= 0) {
+                    if (hitTriangle(tri, camera.pos, ray, tMin, tMax)) {
                         col = tri.col;
                     }
                 }
@@ -93,6 +91,19 @@ async function setupGPUDevice(canvas) {
                 let numerator = dot(-n, orig - p);
                 return numerator / denominator;
             }
+
+            fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> bool {
+                let n = normalize(cross(tri.b - tri.a, tri.c - tri.a));
+                let t = hitPlane(n, tri.a, orig, dir);
+                if (t < 0 || t <= tMin || t >= tMax) {
+                    return false;
+                }
+                let p = orig + t * dir;
+                let na = cross(tri.c - tri.b, p - tri.b);
+                let nb = cross(tri.a - tri.c, p - tri.c);
+                let nc = cross(tri.b - tri.a, p - tri.a);
+                return dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
+            }
         `
     });
 
@@ -114,7 +125,7 @@ async function setupGPUDevice(canvas) {
     return true;
 }
 
-async function renderGPU(camera, sphereList) {
+async function renderGPU(camera, sphereList, triangleList) {
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
         size: 64,
@@ -154,7 +165,10 @@ async function renderGPU(camera, sphereList) {
     });
     device.queue.writeBuffer(spheresBuffer, 0, spheres);
 
-    let triangles = [-3, 0, -1, 1, -1, 0, -1, 1, -2, 1, -1, 1, 1, 0, 1, 1];
+    let triangles = [];
+    for (let i = 0; i < triangleList.length; i++) {
+        triangles = triangles.concat(triangleList[i].getValues());
+    }
     triangles = new Float32Array(triangles);
 
     const triangleBuffer = device.createBuffer({
