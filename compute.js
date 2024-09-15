@@ -47,23 +47,45 @@ async function setupGPUDevice(canvas) {
                 }
 
                 let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-                let ray = pCenter - camera.pos;
-                var col: vec4f = vec4f(0, 0, 0, 1);
+                var ray: vec3f;
+                var orig: vec3f;
+                var nextRay: vec3f = pCenter - camera.pos;
+                var nextOrig: vec3f = camera.pos;
+                var col: vec4f = vec4f(1, 1, 1, 1);
+                var tempCol = vec4f(0, 0, 0, 1);
                 let sphereCount = arrayLength(&spheres);
                 let triCount = arrayLength(&triangles);
+                let bounceCount: u32 = 4;
                 var tMin: f32 = 0.0001;
                 var tMax: f32 = 10000.0;
 
-                for (var i: u32 = 0; i < sphereCount; i += 2) {
-                    let sphere = spheres[i];
-                    let center: vec3f = sphere.xyz;
-                    let radius: f32 = sphere.w;
+                for (var b: u32 = 0; b < bounceCount; b++) {
+                    tMin = 0.0001;
+                    tMax = 10000.0;
+                    tempCol = vec4f(0.7, 0.8, 0.9, 1);
+                    ray = nextRay;
+                    orig = nextOrig;
 
-                    let root = hitSphere(center, radius, camera.pos, ray, tMin, tMax);
+                    for (var i: u32 = 0; i < sphereCount; i += 2) {
+                        let sphere = spheres[i];
+                        let center: vec3f = sphere.xyz;
+                        let radius: f32 = sphere.w;
 
-                    if (root >= 0 && root < tMax) {
-                        tMax = root;
-                        col = spheres[i + 1];
+                        let root = hitSphere(center, radius, camera.pos, ray, tMin, tMax);
+
+                        if (root >= 0 && root < tMax) {
+                            tMax = root;
+                            let hitP = ray * root + camera.pos;
+                            let normal = (hitP - center) / radius;
+                            nextRay = normal;
+                            nextOrig = hitP;
+                            tempCol = spheres[i + 1];
+                        }
+                    }
+                    
+                    col *= tempCol;
+                    if (tMax > 9999) {
+                        break;
                     }
                 }
 
