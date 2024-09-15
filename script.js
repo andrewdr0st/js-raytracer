@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const pixelScaleFactor = 2;
+const pixelScaleFactor = 4;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -41,7 +41,7 @@ let moveSpeed = 1.5;
 
 let cameraTheta = Math.PI;
 let cameraPhi = 0;
-let cameraPhiBound = Math.PI * 0.45;
+let cameraPhiBound = Math.PI * 0.475;
 let sensitivity = 0.005;
 
 document.addEventListener("keydown", (e) => {
@@ -111,7 +111,7 @@ async function loop(currentTime) {
     let moveVec = vnorm(vadd(vscalar(camera.forward, cameraFVel), vscalar(camera.right, cameraRVel)));
     camera.pos = vadd(camera.pos, vscalar(moveVec, deltaTime * moveSpeed));
 
-    camera.lookTo = [Math.sin(cameraTheta), Math.sin(cameraPhi), Math.cos(cameraTheta)];
+    camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
     camera.init();
 
     await runGPUThing();
