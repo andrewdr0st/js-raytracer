@@ -11,6 +11,9 @@ class Camera {
         this.up = [0, 1, 0];
         this.focusDist = 1.0;
 
+        this.raysPerPixel = 16;
+        this.bounceCount = 4;
+
         this.init();
     }
 

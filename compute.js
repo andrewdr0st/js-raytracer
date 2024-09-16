@@ -19,7 +19,9 @@ async function setupGPUDevice(canvas) {
         code: `
             struct cameraData {
                 pos: vec3f,
+                raysPerPixel: u32,
                 topLeftPixel: vec3f,
+                bounceCount: u32,
                 pixelDeltaU: vec3f, 
                 pixelDeltaV: vec3f
             };
@@ -56,20 +58,21 @@ async function setupGPUDevice(canvas) {
                 if (id.x > textureDimensions(tex).x) {
                     return;
                 }
-
-                var rngState = id.x * 2167 + id.y * 31802381;
+                
                 let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
+                var rngState = (id.x * 2167) ^ (id.y * 31802381);
+                
 
                 var totalColor = vec3f(0, 0, 0);
 
                 let sphereCount = arrayLength(&spheres);
                 let triCount = arrayLength(&triangles);
 
-                let bounceCount: u32 = 8;
-                let rayCount: u32 = 32;
+                let bounceCount: u32 = camera.bounceCount;
+                let rayCount: u32 = camera.raysPerPixel;
 
                 for (var a: u32 = 0; a < rayCount; a++) {
-                    var backgroundColor = vec3f(0.3, 0.2, 0.4);
+                    var backgroundColor = vec3f(0.5, 0.5, 0.7);
                     var rayColor = vec3f(1, 1, 1);
                     var incomingLight = vec3f(0, 0, 0);
 
@@ -96,7 +99,7 @@ async function setupGPUDevice(canvas) {
 
                             let root = hitSphere(center, radius, orig, ray, tMin, tMax);
 
-                            if (root >= 0 && root < tMax) {
+                            if (root >= 0 && root < tMax && root > tMin) {
                                 tMax = root;
                                 hr.t = root;
                                 hr.p = ray * root + camera.pos;
@@ -223,7 +226,9 @@ async function renderGPU(camera, sphereList, triangleList) {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
     device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera.pos));
+    device.queue.writeBuffer(cameraBuffer, 12, new Int32Array([camera.raysPerPixel]));
     device.queue.writeBuffer(cameraBuffer, 16, new Float32Array(camera.topLeftPixel));
+    device.queue.writeBuffer(cameraBuffer, 28, new Int32Array([camera.bounceCount]));
     device.queue.writeBuffer(cameraBuffer, 32, new Float32Array(camera.pixelDeltaU));
     device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(camera.pixelDeltaV));
 

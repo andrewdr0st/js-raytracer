@@ -31,6 +31,9 @@ const h = Math.floor(canvasH / pixelScaleFactor);
 
 let camera = new Camera([0, 0, 0], [0, 0,-1], w, h, 90.0);
 
+camera.bounceCount = 8;
+camera.raysPerPixel = 64;
+
 const tempCanvas = document.createElement('canvas');
 tempCanvas.width = w;
 tempCanvas.height = h;
@@ -84,12 +87,12 @@ document.addEventListener("mousemove", (e) => {
 let sphereList = [
     new Sphere(0, 0, -1, 0.5, 1, 1, 1, 0),
     new Sphere(-2, 1, -3, 0.75, 0, 0, 1, 0),
-    new Sphere(0, 10, -20, 8, 1, 1, 1, 1),
-    new Sphere(0, 3, 4, 0.5, 1, 0, 0, 1),
+    new Sphere(0, 15, -30, 12, 1, 1, 1, 1),
+    new Sphere(0, 3, 5, 0.75, 1, 0, 0, 0.9),
     new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0),
     new Sphere(-2, 0.3, -1, 0.2, 0.1, 0.1, 0.3, 0),
     new Sphere(-2, 0.3, -0.85, 0.1, 0, 0, 0.1, 0),
-    new Sphere(0, -30, 0, 29, 0.6, 0.9, 0.5, 0)
+    new Sphere(0, -50, 0, 49, 0.6, 0.9, 0.5, 0)
 ];
 
 let triList = [
