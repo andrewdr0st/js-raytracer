@@ -31,8 +31,8 @@ const h = Math.floor(canvasH / pixelScaleFactor);
 
 let camera = new Camera([0, 0, 0], [0, 0,-1], w, h, 90.0);
 
-camera.bounceCount = 8;
-camera.raysPerPixel = 64;
+camera.bounceCount = 4;
+camera.raysPerPixel = 16;
 
 const tempCanvas = document.createElement('canvas');
 tempCanvas.width = w;

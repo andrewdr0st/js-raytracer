@@ -126,6 +126,9 @@ async function setupGPUDevice(canvas) {
 
                 totalColor /= f32(rayCount);
 
+                totalColor = max(totalColor, vec3f(0, 0, 0));
+                totalColor = sqrt(totalColor);
+
                 /*
                 for (var i: u32 = 0; i < triCount; i++) {
                     let tri = triangles[i];
