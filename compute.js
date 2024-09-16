@@ -37,7 +37,8 @@ async function setupGPUDevice(canvas) {
                 a: vec3f,
                 b: vec3f,
                 c: vec3f,
-                col: vec4f
+                col: vec3f,
+                emission: f32
             };
 
             struct hitRec {
@@ -102,11 +103,26 @@ async function setupGPUDevice(canvas) {
                             if (root >= 0 && root < tMax && root > tMin) {
                                 tMax = root;
                                 hr.t = root;
-                                hr.p = ray * root + camera.pos;
+                                hr.p = ray * root + orig;
                                 hr.n = (hr.p - center) / radius;
                                 hr.h = true;
                                 hr.c = s.col;
                                 hr.e = s.emission;
+                            }
+                        }
+
+                        for (var i: u32 = 0; i < triCount; i++) {
+                            let tri = triangles[i];
+                            var thr = hitTriangle(tri, orig, ray, tMax);
+
+                            if (thr.h && thr.t > tMin) {
+                                tMax = thr.t;
+                                hr.t = thr.t;
+                                hr.n = thr.n;
+                                hr.h = thr.h;
+                                hr.p = ray * hr.t + orig;
+                                hr.c = tri.col;
+                                hr.e = tri.emission;
                             }
                         }
                         
@@ -128,17 +144,6 @@ async function setupGPUDevice(canvas) {
 
                 totalColor = max(totalColor, vec3f(0, 0, 0));
                 totalColor = sqrt(totalColor);
-
-                /*
-                for (var i: u32 = 0; i < triCount; i++) {
-                    let tri = triangles[i];
-                    let hr = hitTriangle(tri, camera.pos, ray, tMax);
-                    if (hr.h) {
-                        col = tri.col.xyz;
-                        tMax = hr.t;
-                    }
-                }
-                */
 
                 textureStore(tex, id.xy, vec4f(totalColor, 1));
             }
@@ -173,6 +178,7 @@ async function setupGPUDevice(canvas) {
                 var hr: hitRec;
                 hr.h = false;
                 let n = normalize(cross(tri.b - tri.a, tri.c - tri.a));
+                hr.n = n;
                 let t = hitPlane(n, tri.a, orig, dir);
                 if (t < 0 || t >= tMax) {
                     return hr;

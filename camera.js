@@ -13,6 +13,8 @@ class Camera {
 
         this.raysPerPixel = 16;
         this.bounceCount = 4;
+        this.antialiasing = false;
+        this.realtimeMode = true;
 
         this.init();
     }
