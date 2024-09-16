@@ -7,12 +7,19 @@ class Triangle {
         this.emission = e;
     }
 
-    getValues() {
-        return [
+    getIndices() {
+        return new Int32Array([0, 1, 2, 0]);
+    }
+
+    getMaterial() {
+        return new Float32Array([this.col[0], this.col[1], this.col[2], this.emission]);
+    }
+
+    getPoints() {
+        return  new Float32Array([
             this.a[0], this.a[1], this.a[2], 0,
             this.b[0], this.b[1], this.b[2], 0,
-            this.c[0], this.c[1], this.c[2], 0,
-            this.col[0], this.col[1], this.col[2], this.emission
-        ];
+            this.c[0], this.c[1], this.c[2], 0
+        ]);
     }
 }

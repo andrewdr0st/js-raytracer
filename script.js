@@ -87,8 +87,8 @@ document.addEventListener("mousemove", (e) => {
 let sphereList = [
     new Sphere(0, 0, -1, 0.5, 1, 1, 1, 0),
     new Sphere(-2, 1, -3, 0.75, 0, 0, 1, 0),
-    new Sphere(0, 15, -30, 12, 1, 1, 1, 0),
-    new Sphere(0, 3, 5, 0.75, 1, 0, 0, 0),
+    new Sphere(0, 15, -30, 12, 1, 1, 1, 1),
+    new Sphere(0, 3, 5, 0.75, 1, 0, 0, 1),
     new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0),
     new Sphere(-2, 0.3, -1, 0.2, 0.1, 0.1, 0.3, 0),
     new Sphere(-2, 0.3, -0.85, 0.1, 0, 0, 0.1, 0),
