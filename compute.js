@@ -24,6 +24,13 @@ async function setupGPUDevice(canvas) {
                 pixelDeltaV: vec3f
             };
 
+            struct sphere {
+                pos: vec3f,
+                radius: f32,
+                col: vec3f,
+                emission: f32
+            };
+
             struct triangle {
                 a: vec3f,
                 b: vec3f,
@@ -32,13 +39,17 @@ async function setupGPUDevice(canvas) {
             };
 
             struct hitRec {
+                p: vec3f,
                 t: f32,
-                h: bool
+                n: vec3f,
+                h: bool,
+                c: vec3f,
+                e: f32
             };
 
             @group(0) @binding(0) var<uniform> camera: cameraData;
             @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
-            @group(2) @binding(0) var<storage, read> spheres: array<vec4f>;
+            @group(2) @binding(0) var<storage, read> spheres: array<sphere>;
             @group(2) @binding(1) var<storage, read> triangles: array<triangle>;
 
             @compute @workgroup_size(${workgroupX}, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
@@ -46,59 +57,84 @@ async function setupGPUDevice(canvas) {
                     return;
                 }
 
+                var rngState = id.x * 2167 + id.y * 31802381;
                 let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-                var ray: vec3f;
-                var orig: vec3f;
-                var nextRay: vec3f = pCenter - camera.pos;
-                var nextOrig: vec3f = camera.pos;
-                var col: vec4f = vec4f(1, 1, 1, 1);
-                var tempCol = vec4f(0, 0, 0, 1);
+
+                var totalColor = vec3f(0, 0, 0);
+
                 let sphereCount = arrayLength(&spheres);
                 let triCount = arrayLength(&triangles);
-                let bounceCount: u32 = 4;
-                var tMin: f32 = 0.0001;
-                var tMax: f32 = 10000.0;
 
-                for (var b: u32 = 0; b < bounceCount; b++) {
-                    tMin = 0.0001;
-                    tMax = 10000.0;
-                    tempCol = vec4f(0.7, 0.8, 0.9, 1);
-                    ray = nextRay;
-                    orig = nextOrig;
+                let bounceCount: u32 = 8;
+                let rayCount: u32 = 32;
 
-                    for (var i: u32 = 0; i < sphereCount; i += 2) {
-                        let sphere = spheres[i];
-                        let center: vec3f = sphere.xyz;
-                        let radius: f32 = sphere.w;
+                for (var a: u32 = 0; a < rayCount; a++) {
+                    var backgroundColor = vec3f(0.3, 0.2, 0.4);
+                    var rayColor = vec3f(1, 1, 1);
+                    var incomingLight = vec3f(0, 0, 0);
 
-                        let root = hitSphere(center, radius, camera.pos, ray, tMin, tMax);
+                    var tMin: f32 = 0.0001;
+                    var tMax: f32 = 10000.0;
 
-                        if (root >= 0 && root < tMax) {
-                            tMax = root;
-                            let hitP = ray * root + camera.pos;
-                            let normal = (hitP - center) / radius;
-                            nextRay = normal;
-                            nextOrig = hitP;
-                            tempCol = spheres[i + 1];
+                    var hr: hitRec;
+                    hr.p = camera.pos;
+                    hr.n = pCenter - camera.pos;
+
+                    for (var b: u32 = 0; b < bounceCount; b++) {
+                        tMin = 0.0001;
+                        tMax = 10000.0;
+                        var ray = hr.n;
+                        var orig = hr.p;
+                        hr.h = false;
+                        hr.c = backgroundColor;
+                        hr.e = 1;
+
+                        for (var i: u32 = 0; i < sphereCount; i++) {
+                            let s = spheres[i];
+                            let center: vec3f = s.pos;
+                            let radius: f32 = s.radius;
+
+                            let root = hitSphere(center, radius, orig, ray, tMin, tMax);
+
+                            if (root >= 0 && root < tMax) {
+                                tMax = root;
+                                hr.t = root;
+                                hr.p = ray * root + camera.pos;
+                                hr.n = (hr.p - center) / radius;
+                                hr.h = true;
+                                hr.c = s.col;
+                                hr.e = s.emission;
+                            }
+                        }
+                        
+                        let emitLight = hr.c * hr.e;
+                        incomingLight += emitLight * rayColor;
+                        rayColor *= hr.c;
+
+                        hr.n += randomDir(&rngState);
+                        
+                        if (tMax > 9999) {
+                            break;
                         }
                     }
-                    
-                    col *= tempCol;
-                    if (tMax > 9999) {
-                        break;
-                    }
+
+                    totalColor += incomingLight;
                 }
 
+                totalColor /= f32(rayCount);
+
+                /*
                 for (var i: u32 = 0; i < triCount; i++) {
                     let tri = triangles[i];
                     let hr = hitTriangle(tri, camera.pos, ray, tMax);
                     if (hr.h) {
-                        col = tri.col;
+                        col = tri.col.xyz;
                         tMax = hr.t;
                     }
                 }
+                */
 
-                textureStore(tex, id.xy, col);
+                textureStore(tex, id.xy, vec4f(totalColor, 1));
             }
 
             fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> f32 {
@@ -120,7 +156,7 @@ async function setupGPUDevice(canvas) {
 
             fn hitPlane(n: vec3f, p: vec3f, orig: vec3f, dir: vec3f) -> f32 {
                 let denominator = dot(n, dir);
-                if (denominator == 0) {
+                if (abs(denominator) < 0.00001) {
                     return -1;
                 }
                 let numerator = dot(-n, orig - p);
@@ -142,6 +178,22 @@ async function setupGPUDevice(canvas) {
                 let nc = cross(tri.b - tri.a, p - tri.a);
                 hr.h = dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
                 return hr;
+            }
+
+            fn randomF(state: ptr<function, u32>) -> f32 {
+                let s = (*state) * 747796405 + 2891336453;
+                *state = s;
+                var result = ((s >> ((s >> 28) + 4)) ^ s) * 277803737;
+                result = (result >> 22) ^ result;
+                return f32(result) / 4294967295.0;
+            }
+
+            fn randomDir(state: ptr<function, u32>) -> vec3f {
+                let theta = randomF(state) * 3.14159;
+                let z = randomF(state) * 2 - 1.0;
+                let x = sqrt(1 - z * z) * cos(theta);
+                let y = sqrt(1 - z * z) * sin(theta);
+                return vec3f(x, y, z);
             }
         `
     });

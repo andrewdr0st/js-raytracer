@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const pixelScaleFactor = 4;
+const pixelScaleFactor = 2;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -82,13 +82,14 @@ document.addEventListener("mousemove", (e) => {
 });
 
 let sphereList = [
-    new Sphere(0, 0, -1, 0.5, 1, 1, 1),
-    new Sphere(-2, 1, -3, 0.75, 0, 0, 1),
-    new Sphere(0, 10, -20, 8, 1, 1, 0.5),
-    new Sphere(0, 3, 4, 0.5, 1, 0, 0),
-    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5),
-    new Sphere(-2, 0.3, -1, 0.2, 0.1, 0.1, 0.3),
-    new Sphere(-2, 0.3, -0.85, 0.1, 0, 0, 0.1)
+    new Sphere(0, 0, -1, 0.5, 1, 1, 1, 0),
+    new Sphere(-2, 1, -3, 0.75, 0, 0, 1, 0),
+    new Sphere(0, 10, -20, 8, 1, 1, 1, 1),
+    new Sphere(0, 3, 4, 0.5, 1, 0, 0, 1),
+    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0),
+    new Sphere(-2, 0.3, -1, 0.2, 0.1, 0.1, 0.3, 0),
+    new Sphere(-2, 0.3, -0.85, 0.1, 0, 0, 0.1, 0),
+    new Sphere(0, -30, 0, 29, 0.6, 0.9, 0.5, 0)
 ];
 
 let triList = [
