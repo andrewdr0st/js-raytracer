@@ -90,9 +90,13 @@ let materialList = [
 let cubeGuy = new Mesh();
 cubeGuy.setMaterial(grayMat);
 
+let groundGuy = new Mesh();
+groundGuy.setMaterial(greenMat);
+
 
 let meshList = [
-    cubeGuy
+    cubeGuy,
+    groundGuy
 ];
 
 let sphereList = [
@@ -100,8 +104,7 @@ let sphereList = [
     new Sphere(-2, 1, -3, 0.75, 0, 0, 1, 0),
     new Sphere(0, 15, -30, 12, 1, 1, 1, 1),
     new Sphere(0, 3, 5, 0.75, 1, 0, 0, 0),
-    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0)//,
-    //new Sphere(0, -50, 0, 49, 0.6, 0.9, 0.5, 0)
+    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0)
 ];
 
 const tempCanvas = document.createElement('canvas');
@@ -133,8 +136,7 @@ async function loop(currentTime) {
 
 async function loadObjs() {
     await cubeGuy.parseObjFile("cube.obj");
-    console.log(cubeGuy.getTriangles());
-    console.log(cubeGuy.getVerticies());
+    await groundGuy.parseObjFile("plane.obj");
     initGPU();
 }
 

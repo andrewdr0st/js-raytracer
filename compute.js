@@ -65,7 +65,7 @@ async function setupGPUDevice(canvas) {
                 }
                 
                 let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-                var rngState = (id.x * 2167) ^ (id.y * 31802381);
+                var rngState = ((id.x * 2167) ^ (id.y * 31802381)) + u32((camera.pos.x + 17.93258) * 123457 - (camera.pos.y - 93.11646) * 157141 - (camera.pos.z + 572.0248) * 403831);
                 
 
                 var totalColor = vec3f(0, 0, 0);
@@ -300,23 +300,30 @@ async function renderGPU(camera, materialList, meshList, sphereList) {
         ]
     });
 
-    let mesh = meshList[0];
-    let tris = mesh.getTriangles();
-    let verts = mesh.getVerticies();
+    let triOffset = 0;
+    let vOffset = 0;
 
     const triangleBuffer = device.createBuffer({
         label: "triangle buffer",
-        size: tris.byteLength,
+        size: totalTris * 16,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(triangleBuffer, 0, tris);
+    for (let i = 0; i < meshList.length; i++) {
+        let m = meshList[i];
+        device.queue.writeBuffer(triangleBuffer, triOffset, m.getTriangles());
+        triOffset += m.tCount * 16;
+    }    
 
     const trianglePointBuffer = device.createBuffer({
         label: "triangle point buffer",
-        size: verts.byteLength,
+        size: (vertexOffset + 1) * 16,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(trianglePointBuffer, 0, verts);
+    for (let i = 0; i < meshList.length; i++) {
+        let m = meshList[i];
+        device.queue.writeBuffer(trianglePointBuffer, vOffset, m.getVerticies());
+        vOffset += m.vCount * 16;
+    }
 
     const trianglesBindGroup = device.createBindGroup({
         label: "triangles bind group",

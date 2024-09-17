@@ -1,15 +1,18 @@
-let vertexOffset = 0;
+let vertexOffset = -1;
+let totalTris = 0;
 
 class Mesh {
     constructor() {
         this.triangles = [];
+        this.tCount = 0;
         this.verticies = [];
+        this.vCount = 0;
 
         this.material;
     }
 
     async parseObjFile(objFile) {
-        const response = await fetch(objFile);
+        const response = await fetch("objects/" + objFile);
         if (!response.ok) {
             throw new Error(`Response status: ${response.status}`);
         }
@@ -22,15 +25,20 @@ class Mesh {
             let type = parts[0];
 
             if (type == "v") {
-                this.verticies = this.verticies.concat([parts[1], parts[2], parts[3], 0]);
+                this.verticies = this.verticies.concat([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 0]);
+                this.vCount++;
             } else if (type == "vt") {
                 //texture coords
             } else if (type == "vn") {
                 //vertex normals
             } else if (type == "f") {
-                this.triangles.push(new Triangle(parts[1] - 1, parts[2] - 1, parts[3] - 1, this.material.id));
+                this.triangles.push(new Triangle(parseInt(parts[1]) + vertexOffset, parseInt(parts[2]) + vertexOffset, parseInt(parts[3]) + vertexOffset, this.material.id));
+                this.tCount++;
             }
         }
+
+        vertexOffset += this.vCount;
+        totalTris += this.tCount;
     }
 
     setMaterial(m) {
