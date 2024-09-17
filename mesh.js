@@ -56,4 +56,20 @@ class Mesh {
     getVerticies() {
         return new Float32Array(this.verticies);
     }
+
+    translate(t) {
+        for (let i = 0; i < this.verticies.length; i += 4) {
+            this.verticies[i] += t[0];
+            this.verticies[i + 1] += t[1];
+            this.verticies[i + 2] += t[2];
+        }
+    }
+
+    scale(s) {
+        for (let i = 0; i < this.verticies.length; i += 4) {
+            this.verticies[i] *= s[0];
+            this.verticies[i + 1] *= s[1];
+            this.verticies[i + 2] *= s[2];
+        }
+    }
 }

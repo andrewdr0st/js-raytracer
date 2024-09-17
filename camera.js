@@ -7,6 +7,8 @@ class Camera {
         this.imgW = imgW;
         this.imgH = imgH;
 
+        this.backgroundColor = [0, 0, 0];
+
         this.fov = fov;
         this.up = [0, 1, 0];
         this.focusDist = 1.0;

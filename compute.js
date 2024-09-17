@@ -23,7 +23,8 @@ async function setupGPUDevice(canvas) {
                 topLeftPixel: vec3f,
                 bounceCount: u32,
                 pixelDeltaU: vec3f, 
-                pixelDeltaV: vec3f
+                pixelDeltaV: vec3f,
+                backgroundColor: vec3f
             };
 
             struct material {
@@ -77,7 +78,7 @@ async function setupGPUDevice(canvas) {
                 let rayCount: u32 = camera.raysPerPixel;
 
                 for (var a: u32 = 0; a < rayCount; a++) {
-                    var backgroundColor = vec3f(0.5, 0.5, 0.7);
+                    var backgroundColor = camera.backgroundColor;
                     var rayColor = vec3f(1, 1, 1);
                     var incomingLight = vec3f(0, 0, 0);
 
@@ -239,7 +240,7 @@ async function setupGPUDevice(canvas) {
 async function renderGPU(camera, materialList, meshList, sphereList) {
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
-        size: 64,
+        size: 80,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
     device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera.pos));
@@ -248,6 +249,7 @@ async function renderGPU(camera, materialList, meshList, sphereList) {
     device.queue.writeBuffer(cameraBuffer, 28, new Int32Array([camera.bounceCount]));
     device.queue.writeBuffer(cameraBuffer, 32, new Float32Array(camera.pixelDeltaU));
     device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(camera.pixelDeltaV));
+    device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(camera.backgroundColor));
 
     const uniformBindGroup = device.createBindGroup({
         layout: pipeline.getBindGroupLayout(0),
