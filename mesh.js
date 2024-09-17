@@ -28,7 +28,7 @@ class Mesh {
             } else if (type == "vn") {
                 //vertex normals
             } else if (type == "f") {
-                this.triangles.push(new Triangle(parts[1], parts[2], parts[3], this.material.id));
+                this.triangles.push(new Triangle(parts[1] - 1, parts[2] - 1, parts[3] - 1, this.material.id));
             }
         }
     }

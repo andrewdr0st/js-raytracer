@@ -122,7 +122,7 @@ async function setupGPUDevice(canvas) {
                             let c = triPoints[tri.points.z];
                             var thr = hitTriangle(a, b, c, orig, ray, tMax);
 
-                            if (thr.h && thr.t > tMin) {
+                            if (thr.h && thr.t > tMin && thr.t < tMax) {
                                 tMax = thr.t;
                                 hr.t = thr.t;
                                 hr.n = thr.n;

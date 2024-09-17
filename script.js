@@ -29,10 +29,10 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let camera = new Camera([0, 0, 0], [0, 0,-1], w, h, 90.0);
+let camera = new Camera([0, 0, 2], [0, 0,-1], w, h, 90.0);
 
-camera.bounceCount = 8;
-camera.raysPerPixel = 64;
+camera.bounceCount = 4;
+camera.raysPerPixel = 16;
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -81,7 +81,7 @@ document.addEventListener("mousemove", (e) => {
 });
 
 let greenMat = new Material(0, 0.4, 0.1, 0);
-let grayMat = new Material(0.9, 0.5, 0.9, 0);
+let grayMat = new Material(0.5, 0.5, 0.5, 0);
 
 let materialList = [
     greenMat, grayMat
@@ -96,10 +96,10 @@ let meshList = [
 ];
 
 let sphereList = [
-    new Sphere(0, 0, -1, 0.5, 1, 1, 1, 0),
+    new Sphere(0, 0, 0, 0.75, 1, 1, 1, 0),
     new Sphere(-2, 1, -3, 0.75, 0, 0, 1, 0),
     new Sphere(0, 15, -30, 12, 1, 1, 1, 1),
-    new Sphere(0, 3, 5, 0.75, 1, 0, 0, 1),
+    new Sphere(0, 3, 5, 0.75, 1, 0, 0, 0),
     new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0)//,
     //new Sphere(0, -50, 0, 49, 0.6, 0.9, 0.5, 0)
 ];
@@ -133,6 +133,8 @@ async function loop(currentTime) {
 
 async function loadObjs() {
     await cubeGuy.parseObjFile("cube.obj");
+    console.log(cubeGuy.getTriangles());
+    console.log(cubeGuy.getVerticies());
     initGPU();
 }
 
