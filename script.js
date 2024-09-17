@@ -31,12 +31,8 @@ const h = Math.floor(canvasH / pixelScaleFactor);
 
 let camera = new Camera([0, 0, 0], [0, 0,-1], w, h, 90.0);
 
-camera.bounceCount = 4;
-camera.raysPerPixel = 24;
-
-const tempCanvas = document.createElement('canvas');
-tempCanvas.width = w;
-tempCanvas.height = h;
+camera.bounceCount = 8;
+camera.raysPerPixel = 64;
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -84,20 +80,33 @@ document.addEventListener("mousemove", (e) => {
     cameraPhi = Math.min(Math.max(cameraPhi, -cameraPhiBound), cameraPhiBound);
 });
 
+let greenMat = new Material(0, 0.4, 0.1, 0);
+let grayMat = new Material(0.9, 0.5, 0.9, 0);
+
+let materialList = [
+    greenMat, grayMat
+];
+
+let cubeGuy = new Mesh();
+cubeGuy.setMaterial(grayMat);
+
+
+let meshList = [
+    cubeGuy
+];
+
 let sphereList = [
     new Sphere(0, 0, -1, 0.5, 1, 1, 1, 0),
     new Sphere(-2, 1, -3, 0.75, 0, 0, 1, 0),
     new Sphere(0, 15, -30, 12, 1, 1, 1, 1),
     new Sphere(0, 3, 5, 0.75, 1, 0, 0, 1),
-    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0),
-    new Sphere(-2, 0.3, -1, 0.2, 0.1, 0.1, 0.3, 0),
-    new Sphere(-2, 0.3, -0.85, 0.1, 0, 0, 0.1, 0),
-    new Sphere(0, -50, 0, 49, 0.6, 0.9, 0.5, 0)
+    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0)//,
+    //new Sphere(0, -50, 0, 49, 0.6, 0.9, 0.5, 0)
 ];
 
-let triList = [
-    new Triangle(-3, 0, -1, -1, 0, -1, -2, 1, -1, 0, 0.4, 0.1, 0)
-];
+const tempCanvas = document.createElement('canvas');
+tempCanvas.width = w;
+tempCanvas.height = h;
 
 let lastFrameTime = 0;
 let fps = 0;
@@ -122,6 +131,11 @@ async function loop(currentTime) {
     requestAnimationFrame(loop);
 }
 
+async function loadObjs() {
+    await cubeGuy.parseObjFile("cube.obj");
+    initGPU();
+}
+
 async function initGPU() {
     if (await setupGPUDevice(tempCanvas)) {
         requestAnimationFrame(loop);
@@ -129,7 +143,7 @@ async function initGPU() {
 }
 
 async function runGPUThing() {
-    await renderGPU(camera, sphereList, triList);
+    await renderGPU(camera, materialList, meshList, sphereList);
 }
 
-initGPU();
+loadObjs();
