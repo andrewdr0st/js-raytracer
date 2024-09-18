@@ -17,6 +17,7 @@ class Camera {
         this.bounceCount = 4;
         this.antialiasing = false;
         this.realtimeMode = true;
+        this.seed = 0;
 
         this.init();
     }
@@ -47,35 +48,5 @@ class Camera {
         this.topLeftPixel = vadd(this.viewportUpperLeft, vscalar(vadd(this.pixelDeltaU, this.pixelDeltaV), 0.5));
     }
 
-    render(imgData) {
-        for (let y = 0; y < this.imgH; y++) {
-            for (let x = 0; x < this.imgW; x++) {
-                let pCenter = vadd(this.topLeftPixel, vadd(vscalar(this.pixelDeltaU, x), vscalar(this.pixelDeltaV, y)));
-                let rayDir = vsub(pCenter, this.pos);
-                let r = new Ray(this.pos, rayDir);
-                let c = rayColor(r);
-                colorPixel(imgData, x, y, c);
-            }
-        }
-    }
-
-    
 }
 
-function hitSphere(center, radius, ray) {
-    let oc = vsub(center, ray.origin);
-    let a = vdot(ray.dir, ray.dir);
-    let b = -2.0 * vdot(ray.dir, oc);
-    let c = vdot(oc, oc) - radius * radius;
-    let discriminant = b * b - 4 * a * c;
-    return discriminant >= 0;
-}
-
-function rayColor(r) {
-    if (hitSphere([0, 0, -1], 0.5, r)) {
-        return [1.0, 0, 0];
-    }
-
-    let unitDir = vnorm(r.dir);
-    return clerp((unitDir[1] + 1) * 0.5, [0.0, 1.0, 0.25], [0.25, 0.5, 1.0]);
-}

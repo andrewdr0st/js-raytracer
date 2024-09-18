@@ -34,7 +34,7 @@ let camera = new Camera([0, 0, 2], [0, 0,-1], w, h, 90.0);
 camera.backgroundColor = [0.05, 0.05, 0.2];
 
 camera.bounceCount = 8;
-camera.raysPerPixel = 64;
+camera.raysPerPixel = 16;
 
 let cameraFVel = 0;
 let cameraRVel = 0;
