@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const pixelScaleFactor = 4;
+const pixelScaleFactor = 2;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -31,10 +31,10 @@ const h = Math.floor(canvasH / pixelScaleFactor);
 
 let camera = new Camera([0, 0, 2], [0, 0,-1], w, h, 90.0);
 
-camera.backgroundColor = [0.45, 0.45, 0.82];
+camera.backgroundColor = [0.05, 0.05, 0.2];
 
 camera.bounceCount = 4;
-camera.raysPerPixel = 16;
+camera.raysPerPixel = 32;
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -90,7 +90,7 @@ let sunMat = new Material(1, 1, 1, 1);
 let metalMat = new Material(0.8, 0.3, 0.5, 0, 0.9, 0.1, 0, 0);
 
 let materialList = [
-    greenMat, grayMat, glowMat
+    greenMat, grayMat, glowMat, blueMat, sunMat, metalMat
 ];
 
 let cubeGuy = new Mesh();

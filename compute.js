@@ -102,7 +102,7 @@ async function setupGPUDevice(canvas) {
                         var orig = hr.p;
                         hr.h = false;
                         hr.m.c = backgroundColor;
-                        hr.m.e = 0;
+                        hr.m.e = 1;
 
                         for (var i: u32 = 0; i < sphereCount; i++) {
                             let s = spheres[i];
