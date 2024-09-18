@@ -18,6 +18,7 @@ class Camera {
         this.antialiasing = false;
         this.realtimeMode = true;
         this.seed = 0;
+        this.frameCount = 1;
 
         this.init();
     }
@@ -46,6 +47,11 @@ class Camera {
         let viewplaneVec = vadd(vdivide(this.viewportU, 2), vdivide(this.viewportV, 2));
         this.viewportUpperLeft = vsub(viewplanePos, viewplaneVec);
         this.topLeftPixel = vadd(this.viewportUpperLeft, vscalar(vadd(this.pixelDeltaU, this.pixelDeltaV), 0.5));
+    }
+
+    updateStatic() {
+        this.seed += 7;
+        this.frameCount++;
     }
 
 }
