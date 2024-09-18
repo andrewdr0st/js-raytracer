@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const pixelScaleFactor = 2;
+const pixelScaleFactor = 4;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -33,8 +33,8 @@ let camera = new Camera([0, 0, 2], [0, 0,-1], w, h, 90.0);
 
 camera.backgroundColor = [0.05, 0.05, 0.2];
 
-camera.bounceCount = 4;
-camera.raysPerPixel = 32;
+camera.bounceCount = 8;
+camera.raysPerPixel = 64;
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -87,14 +87,15 @@ let grayMat = new Material(0.5, 0.5, 0.5, 0);
 let glowMat = new Material(0.6, 0.6, 0.7, 0.8);
 let blueMat = new Material(0, 0, 1, 0);
 let sunMat = new Material(1, 1, 1, 1);
-let metalMat = new Material(0.8, 0.3, 0.5, 0, 0.9, 0.1, 0, 0);
+let pinkMetal = new Material(0.8, 0.3, 0.5, 0, 0.5, 0.3, 0, 0);
+let silverMetal = new Material(0.9, 0.9, 0.95, 0, 0.95, 0.02, 0, 0);
 
 let materialList = [
-    greenMat, grayMat, glowMat, blueMat, sunMat, metalMat
+    greenMat, grayMat, glowMat, blueMat, sunMat, pinkMetal, silverMetal
 ];
 
 let cubeGuy = new Mesh();
-cubeGuy.setMaterial(grayMat);
+cubeGuy.setMaterial(silverMetal);
 
 let groundGuy = new Mesh();
 groundGuy.setMaterial(greenMat);
@@ -111,7 +112,7 @@ let meshList = [
 let sphereList = [
     new Sphere(-2, 1, -3, 0.75, blueMat.id),
     new Sphere(0, 15, -30, 12, sunMat.id),
-    new Sphere(6, -1, 0, 1, metalMat.id)
+    new Sphere(6, -1, 0, 1, pinkMetal.id)
 ];
 
 const tempCanvas = document.createElement('canvas');

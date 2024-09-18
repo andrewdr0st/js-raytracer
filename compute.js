@@ -36,7 +36,7 @@ async function setupGPUDevice(canvas) {
                 e: f32,
                 reflectChance: f32,
                 fuzzFactor: f32,
-                refreactChance: f32,
+                refractChance: f32,
                 ri: f32
             };
 
@@ -142,7 +142,15 @@ async function setupGPUDevice(canvas) {
                         incomingLight += emitLight * rayColor;
                         rayColor *= hr.m.c;
 
-                        hr.n += randomDir(&rngState);
+                        let matRand = randomF(&rngState);
+                        if (matRand < hr.m.reflectChance) {
+                            hr.n = reflect(ray, hr.n);
+                            if (hr.m.fuzzFactor > 0) {
+                                hr.n += randomDir(&rngState) * hr.m.fuzzFactor;
+                            }
+                        } else {
+                            hr.n += randomDir(&rngState);
+                        }
                         
                         if (tMax > 9999) {
                             break;
