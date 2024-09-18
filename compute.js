@@ -6,6 +6,10 @@ let computeContext;
 
 const workgroupX = 64;
 
+const triangleSize = 16;
+const vertexSize = 16;
+const sphereSize = 32;
+
 async function setupGPUDevice(canvas) {
     adapter = await navigator.gpu?.requestAdapter();
     device = await adapter?.requestDevice();
@@ -29,14 +33,17 @@ async function setupGPUDevice(canvas) {
 
             struct material {
                 c: vec3f,
-                e: f32
+                e: f32,
+                reflectChance: f32,
+                fuzzFactor: f32,
+                refreactChance: f32,
+                ri: f32
             };
 
             struct sphere {
                 pos: vec3f,
                 radius: f32,
-                col: vec3f,
-                emission: f32
+                m: u32
             };
 
             struct triangle {
@@ -49,8 +56,7 @@ async function setupGPUDevice(canvas) {
                 t: f32,
                 n: vec3f,
                 h: bool,
-                c: vec3f,
-                e: f32
+                m: material
             };
 
             @group(0) @binding(0) var<uniform> camera: cameraData;
@@ -95,8 +101,8 @@ async function setupGPUDevice(canvas) {
                         var ray = hr.n;
                         var orig = hr.p;
                         hr.h = false;
-                        hr.c = backgroundColor;
-                        hr.e = 1;
+                        hr.m.c = backgroundColor;
+                        hr.m.e = 0;
 
                         for (var i: u32 = 0; i < sphereCount; i++) {
                             let s = spheres[i];
@@ -111,8 +117,7 @@ async function setupGPUDevice(canvas) {
                                 hr.p = ray * root + orig;
                                 hr.n = (hr.p - center) / radius;
                                 hr.h = true;
-                                hr.c = s.col;
-                                hr.e = s.emission;
+                                hr.m = materials[s.m];
                             }
                         }
 
@@ -129,15 +134,13 @@ async function setupGPUDevice(canvas) {
                                 hr.n = thr.n;
                                 hr.h = thr.h;
                                 hr.p = ray * hr.t + orig;
-                                let m = materials[tri.m];
-                                hr.c = m.c;
-                                hr.e = m.e;
+                                hr.m = materials[tri.m];
                             }
                         }
                         
-                        let emitLight = hr.c * hr.e;
+                        let emitLight = hr.m.c * hr.m.e;
                         incomingLight += emitLight * rayColor;
-                        rayColor *= hr.c;
+                        rayColor *= hr.m.c;
 
                         hr.n += randomDir(&rngState);
                         
@@ -280,18 +283,16 @@ async function renderGPU(camera, materialList, meshList, sphereList) {
     });
     device.queue.writeBuffer(materialBuffer, 0, materials);
 
-    let spheres = [];
-    for (let i = 0; i < sphereList.length; i++) {
-        spheres = spheres.concat(sphereList[i].getValues());
-    }
-    spheres = new Float32Array(spheres);
-
     const spheresBuffer = device.createBuffer({
         label: "spheres buffer",
-        size: spheres.byteLength,
+        size: sphereList.length * sphereSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(spheresBuffer, 0, spheres);
+    for (let i = 0; i < sphereList.length; i++) {
+        let s = sphereList[i];
+        device.queue.writeBuffer(spheresBuffer, i * sphereSize, new Float32Array(s.getValues()));
+        device.queue.writeBuffer(spheresBuffer, i * sphereSize + 16, new Uint32Array(s.getM()));
+    }
 
     const spheresBindGroup = device.createBindGroup({
         label: "sphere bind group",
@@ -307,24 +308,24 @@ async function renderGPU(camera, materialList, meshList, sphereList) {
 
     const triangleBuffer = device.createBuffer({
         label: "triangle buffer",
-        size: totalTris * 16,
+        size: totalTris * triangleSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
     for (let i = 0; i < meshList.length; i++) {
         let m = meshList[i];
         device.queue.writeBuffer(triangleBuffer, triOffset, m.getTriangles());
-        triOffset += m.tCount * 16;
+        triOffset += m.tCount * triangleSize;
     }    
 
     const trianglePointBuffer = device.createBuffer({
         label: "triangle point buffer",
-        size: (vertexOffset + 1) * 16,
+        size: (vertexOffset + 1) * vertexSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
     for (let i = 0; i < meshList.length; i++) {
         let m = meshList[i];
         device.queue.writeBuffer(trianglePointBuffer, vOffset, m.getVerticies());
-        vOffset += m.vCount * 16;
+        vOffset += m.vCount * vertexSize;
     }
 
     const trianglesBindGroup = device.createBindGroup({

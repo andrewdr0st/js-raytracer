@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const pixelScaleFactor = 12;
+const pixelScaleFactor = 4;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -31,10 +31,10 @@ const h = Math.floor(canvasH / pixelScaleFactor);
 
 let camera = new Camera([0, 0, 2], [0, 0,-1], w, h, 90.0);
 
-camera.backgroundColor = [0.1, 0.1, 0.3];
+camera.backgroundColor = [0.45, 0.45, 0.82];
 
 camera.bounceCount = 4;
-camera.raysPerPixel = 32;
+camera.raysPerPixel = 16;
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -84,9 +84,13 @@ document.addEventListener("mousemove", (e) => {
 
 let greenMat = new Material(0.05, 0.4, 0.1, 0);
 let grayMat = new Material(0.5, 0.5, 0.5, 0);
+let glowMat = new Material(0.6, 0.6, 0.7, 0.8);
+let blueMat = new Material(0, 0, 1, 0);
+let sunMat = new Material(1, 1, 1, 1);
+let metalMat = new Material(0.8, 0.3, 0.5, 0, 0.9, 0.1, 0, 0);
 
 let materialList = [
-    greenMat, grayMat
+    greenMat, grayMat, glowMat
 ];
 
 let cubeGuy = new Mesh();
@@ -95,18 +99,19 @@ cubeGuy.setMaterial(grayMat);
 let groundGuy = new Mesh();
 groundGuy.setMaterial(greenMat);
 
+let prismGuy = new Mesh();
+prismGuy.setMaterial(glowMat);
 
 let meshList = [
     cubeGuy,
-    groundGuy
+    groundGuy,
+    prismGuy
 ];
 
 let sphereList = [
-    new Sphere(0, 0, 0, 0.75, 1, 1, 1, 0),
-    new Sphere(-2, 1, -3, 0.75, 0, 0, 1, 0),
-    new Sphere(0, 15, -30, 12, 1, 1, 1, 1),
-    new Sphere(0, 3, 5, 0.75, 1, 0, 0, 1),
-    new Sphere(6, -1, 0, 1, 0.8, 0.3, 0.5, 0)
+    new Sphere(-2, 1, -3, 0.75, blueMat.id),
+    new Sphere(0, 15, -30, 12, sunMat.id),
+    new Sphere(6, -1, 0, 1, metalMat.id)
 ];
 
 const tempCanvas = document.createElement('canvas');
@@ -141,6 +146,9 @@ async function loadObjs() {
     await groundGuy.parseObjFile("plane.obj");
     groundGuy.scale([15, 1, 10]);
     groundGuy.translate([0, -1, 0]);
+    await prismGuy.parseObjFile("prism.obj");
+    prismGuy.scale([1, 2, 1]);
+    prismGuy.translate([-5, 2, 2]);
     initGPU();
 }
 
