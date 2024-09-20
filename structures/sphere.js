@@ -10,6 +10,6 @@ class Sphere {
     }
 
     getM() {
-        return [this.m, 0, 0, 0];
+        return [this.m.id, 0, 0, 0];
     }
 }

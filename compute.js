@@ -248,7 +248,12 @@ async function setupGPUDevice(canvas) {
     return true;
 }
 
-async function renderGPU(camera, materialList, meshList, sphereList) {
+async function renderGPU(scene) {
+    let camera = scene.camera;
+    let materialList = scene.materialList;
+    let meshList = scene.meshList;
+    let sphereList = scene.sphereList;
+
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
         size: 80,

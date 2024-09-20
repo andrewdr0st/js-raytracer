@@ -21,19 +21,12 @@ if (!blackBorders) {
 const canvasW = ctx.canvas.width;
 const canvasH = ctx.canvas.height;
 
-
-
 ctx.imageSmoothingEnabled = false;
 
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let camera = new Camera([10, 4, 2], [-1, -0.1, -0.1], w, h, 90.0);
-
-camera.backgroundColor = [0.15, 0.15, 0.4];
-
-camera.bounceCount = 16;
-camera.raysPerPixel = 1;
+let scene = new MirrorCube();
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -87,39 +80,6 @@ if (!staticRender) {
     });
 }
 
-let greenMat = new Material(0.05, 0.4, 0.1, 0);
-let grayMat = new Material(0.5, 0.5, 0.5, 0);
-let glowMat = new Material(0.6, 0.6, 0.7, 0.8);
-let blueMat = new Material(0, 0, 1, 0);
-let sunMat = new Material(1, 1, 1, 1);
-let pinkMetal = new Material(0.8, 0.3, 0.5, 0, 0.5, 0.3, 0, 0);
-let silverMetal = new Material(0.9, 0.9, 0.95, 0, 0.95, 0.02, 0, 0);
-
-let materialList = [
-    greenMat, grayMat, glowMat, blueMat, sunMat, pinkMetal, silverMetal
-];
-
-let cubeGuy = new Mesh();
-cubeGuy.setMaterial(silverMetal);
-
-let groundGuy = new Mesh();
-groundGuy.setMaterial(greenMat);
-
-let prismGuy = new Mesh();
-prismGuy.setMaterial(glowMat);
-
-let meshList = [
-    cubeGuy,
-    groundGuy,
-    prismGuy
-];
-
-let sphereList = [
-    new Sphere(-2, 1, -3, 0.75, blueMat.id),
-    new Sphere(0, 15, -30, 12, sunMat.id),
-    new Sphere(6, -1, 0, 1, pinkMetal.id)
-];
-
 const tempCanvas = document.createElement('canvas');
 tempCanvas.width = w;
 tempCanvas.height = h;
@@ -129,6 +89,7 @@ let lastFrameTime = 0;
 async function loop(currentTime) {
     const deltaTime = (currentTime - lastFrameTime) * 0.001;
     lastFrameTime = currentTime;
+    let camera = scene.camera;
 
     if (staticRender) {
         camera.updateStatic();
@@ -148,24 +109,15 @@ async function loop(currentTime) {
     requestAnimationFrame(loop);
 }
 
-async function loadObjs() {
-    await cubeGuy.parseObjFile("cube.obj");
-    await groundGuy.parseObjFile("plane.obj");
-    groundGuy.scale([15, 1, 10]);
-    groundGuy.translate([0, -1, 0]);
-    await prismGuy.parseObjFile("prism.obj");
-    prismGuy.scale([1, 2, 1]);
-    prismGuy.translate([-5, 2, 2]);
-    initGPU();
-}
-
 async function initGPU() {
     if (staticRender) {
         if (await setupGPUDeviceStaticRender(tempCanvas)) {
+            await scene.setup(w, h);
             requestAnimationFrame(loop);
         }
     } else {
         if (await setupGPUDevice(tempCanvas)) {
+            await scene.setup(w, h);
             requestAnimationFrame(loop);
         }
     }
@@ -173,10 +125,10 @@ async function initGPU() {
 
 async function runGPUThing() {
     if (staticRender) {
-        await renderGPUStatic(camera, materialList, meshList, sphereList);
+        await renderGPUStatic(scene);
     } else {
-        await renderGPU(camera, materialList, meshList, sphereList);
+        await renderGPU(scene);
     }
 }
 
-loadObjs();
+initGPU();

@@ -64,7 +64,7 @@ async function setupGPUDeviceStaticRender(canvas) {
                     return;
                 }
 
-                var rngState = ((id.x * 2167) ^ (id.y * 31802381)) + camera.randomSeed;
+                var rngState = ((id.x * 2167) ^ (id.y * 31802381)) + (camera.randomSeed * camera.frameCount * 1401);
 
                 let xRand = randomF(&rngState) - 0.5;
                 let yRand = randomF(&rngState) - 0.5;
@@ -163,7 +163,7 @@ async function setupGPUDeviceStaticRender(canvas) {
 
                 let prevColor = textureLoad(prevTex, id.xy);
                 let cFactor = 1 / f32(camera.frameCount);
-
+                
                 totalColor = totalColor * cFactor + prevColor.rgb * (1 - cFactor);
 
                 textureStore(tex, id.xy, vec4f(totalColor, 1));
@@ -255,7 +255,12 @@ async function setupGPUDeviceStaticRender(canvas) {
     return true;
 }
 
-async function renderGPUStatic(camera, materialList, meshList, sphereList) {
+async function renderGPUStatic(scene) {
+    let camera = scene.camera;
+    let materialList = scene.materialList;
+    let meshList = scene.meshList;
+    let sphereList = scene.sphereList;
+
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
         size: 80,

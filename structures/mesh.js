@@ -11,7 +11,7 @@ class Mesh {
         this.material;
     }
 
-    async parseObjFile(objFile) {
+    async parseObjFile(objFile, invert=false) {
         const response = await fetch("objects/" + objFile);
         if (!response.ok) {
             throw new Error(`Response status: ${response.status}`);
@@ -32,7 +32,11 @@ class Mesh {
             } else if (type == "vn") {
                 //vertex normals
             } else if (type == "f") {
-                this.triangles.push(new Triangle(parseInt(parts[1]) + vertexOffset, parseInt(parts[2]) + vertexOffset, parseInt(parts[3]) + vertexOffset, this.material.id));
+                if (invert) {
+                    this.triangles.push(new Triangle(parseInt(parts[3]) + vertexOffset, parseInt(parts[2]) + vertexOffset, parseInt(parts[1]) + vertexOffset, this.material.id));
+                } else {
+                    this.triangles.push(new Triangle(parseInt(parts[1]) + vertexOffset, parseInt(parts[2]) + vertexOffset, parseInt(parts[3]) + vertexOffset, this.material.id));
+                }
                 this.tCount++;
             }
         }
