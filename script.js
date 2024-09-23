@@ -26,7 +26,7 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let scene = new MirrorCube();
+let scene = new ColorTower();
 
 let cameraFVel = 0;
 let cameraRVel = 0;

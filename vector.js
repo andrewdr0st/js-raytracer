@@ -59,3 +59,33 @@ function vsub(u, v) {
 }
 
 
+function hsv2rgb(h, s, v) {
+    let c = v * s;
+    let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    let m = v - c;
+
+    let r, g, b = 0;
+
+    if (h < 60) {
+        r = c;
+        g = x;
+    } else if (h < 120) {
+        r = x;
+        g = c;
+    } else if (h < 180) {
+        g = c;
+        b = x;
+    } else if (h < 240) {
+        g = x;
+        b = c;
+    } else if (h < 300) {
+        b = c;
+        r = x;
+    } else {
+        b = x;
+        r = c;
+    }
+    
+    return [r + m, g + m, b + m];
+}
+
