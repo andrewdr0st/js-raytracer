@@ -56,6 +56,8 @@ async function setupGPUDevice(canvas) {
                 t: f32,
                 n: vec3f,
                 h: bool,
+                d: vec3f,
+                frontFace: bool,
                 m: material
             };
 
@@ -93,12 +95,12 @@ async function setupGPUDevice(canvas) {
 
                     var hr: hitRec;
                     hr.p = camera.pos;
-                    hr.n = pCenter - camera.pos;
+                    hr.d = pCenter - camera.pos;
 
                     for (var b: u32 = 0; b < bounceCount; b++) {
-                        tMin = 0.0001;
+                        tMin = 0.001;
                         tMax = 10000.0;
-                        var ray = hr.n;
+                        var ray = hr.d;
                         var orig = hr.p;
                         hr.h = false;
                         hr.m.c = backgroundColor;
@@ -116,6 +118,10 @@ async function setupGPUDevice(canvas) {
                                 hr.t = root;
                                 hr.p = ray * root + orig;
                                 hr.n = (hr.p - center) / radius;
+                                hr.frontFace = dot(ray, hr.n) < 0;
+                                if (!hr.frontFace) {
+                                    hr.n = -hr.n;
+                                }
                                 hr.h = true;
                                 hr.m = materials[s.m];
                             }
@@ -143,13 +149,26 @@ async function setupGPUDevice(canvas) {
                         rayColor *= hr.m.c;
 
                         let matRand = randomF(&rngState);
-                        if (matRand < hr.m.reflectChance) {
-                            hr.n = reflect(ray, hr.n);
+                        if (matRand < hr.m.refractChance) {
+                            ray = normalize(ray);
+                            let cosTheta = dot(ray, -hr.n);
+                            var ri = hr.m.ri;
+                            if (hr.frontFace) {
+                                ri = 1.0 / ri;
+                            }
+                            let r = refract(ray, hr.n, 1.0 / hr.m.ri);
+                            if (all(r == vec3f(0.0)) || schlick(cosTheta, ri) > randomF(&rngState)) {
+                                hr.d = reflect(ray, hr.n);
+                            } else {
+                                hr.d = r;
+                            }
+                        } else if (matRand < hr.m.reflectChance) {
+                            hr.d = reflect(ray, hr.n);
                             if (hr.m.fuzzFactor > 0) {
-                                hr.n += randomDir(&rngState) * hr.m.fuzzFactor;
+                                hr.d += randomDir(&rngState) * hr.m.fuzzFactor;
                             }
                         } else {
-                            hr.n += randomDir(&rngState);
+                            hr.d = hr.n + randomDir(&rngState);
                         }
                         
                         if (tMax > 9999) {
@@ -210,6 +229,12 @@ async function setupGPUDevice(canvas) {
                 let nc = cross(b - a, p - a);
                 hr.h = dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
                 return hr;
+            }
+
+            fn schlick(c: f32, ri: f32) -> f32 {
+                var r0 = (1 - ri) / (1 + ri);
+                r0 = r0 * r0;
+                return r0 + (1 - r0) * pow((1 - c), 5);
             }
 
             fn randomF(state: ptr<function, u32>) -> f32 {
