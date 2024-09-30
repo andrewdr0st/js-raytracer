@@ -2,8 +2,8 @@ class TestScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
         this.camera.backgroundColor = [0.5, 0.5, 0.6];
-        this.camera.bounceCount = 16;
-        this.camera.raysPerPixel = 24;
+        this.camera.bounceCount = 8;
+        this.camera.raysPerPixel = 4;
     }
 
     async setupObjects() {
@@ -19,19 +19,6 @@ class TestScene extends Scene {
         blueCube.translate([1, 1, 6]);
         this.meshList.push(blueCube);
 
-        let glassCube = new Mesh();
-        glassCube.setMaterial(this.materialList[4]);
-        await glassCube.parseObjFile("cube.obj");
-        glassCube.translate([2, 1, -8]);
-        this.meshList.push(glassCube);
-
-        let glassPane = new Mesh();
-        glassPane.setMaterial(this.materialList[4]);
-        await glassPane.parseObjFile("cube.obj");
-        glassPane.scale([0.05, 5, 10]);
-        glassPane.translate([8, 5.001, 0]);
-        this.meshList.push(glassPane);
-
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);
 
@@ -46,7 +33,7 @@ class TestScene extends Scene {
         this.materialList.push(new Material(0.2, 0.4, 0.25, 0));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 1.0));
         this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1));
-        this.materialList.push(new Material(0.4, 0.65, 0.95, 0));
+        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0.75, 1.2));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5, 1.5));
     }
 }
