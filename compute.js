@@ -101,6 +101,7 @@ async function setupGPUDevice(canvas) {
                         tMin = 0.001;
                         tMax = 10000.0;
                         var ray = hr.d;
+                        ray = normalize(ray);
                         var orig = hr.p;
                         hr.h = false;
                         hr.m.c = backgroundColor;
@@ -113,7 +114,7 @@ async function setupGPUDevice(canvas) {
 
                             let root = hitSphere(center, radius, orig, ray, tMin, tMax);
 
-                            if (root >= 0 && root < tMax && root > tMin) {
+                            if (root < tMax && root > tMin) {
                                 tMax = root;
                                 hr.t = root;
                                 hr.p = ray * root + orig;
@@ -138,6 +139,10 @@ async function setupGPUDevice(canvas) {
                                 tMax = thr.t;
                                 hr.t = thr.t;
                                 hr.n = thr.n;
+                                hr.frontFace = dot(ray, hr.n) < 0;
+                                if (!hr.frontFace) {
+                                    hr.n = -hr.n;
+                                }
                                 hr.h = thr.h;
                                 hr.p = ray * hr.t + orig;
                                 hr.m = materials[tri.m];
@@ -150,15 +155,11 @@ async function setupGPUDevice(canvas) {
 
                         let matRand = randomF(&rngState);
                         if (matRand < hr.m.refractChance) {
-                            ray = normalize(ray);
                             let cosTheta = dot(ray, -hr.n);
-                            var ri = hr.m.ri;
-                            if (hr.frontFace) {
-                                ri = 1.0 / ri;
-                            }
-                            let r = refract(ray, hr.n, 1.0 / hr.m.ri);
-                            if (all(r == vec3f(0.0)) || schlick(cosTheta, ri) > randomF(&rngState)) {
-                                hr.d = reflect(ray, hr.n);
+                            let refractiveRatio = select(hr.m.ri, 1.0 / hr.m.ri, hr.frontFace);
+                            let r = refract(ray, hr.n, refractiveRatio);
+                            if (all(r == vec3f(0.0)) || schlick(cosTheta, refractiveRatio) > randomF(&rngState)) {
+                               hr.d = reflect(ray, hr.n);
                             } else {
                                 hr.d = r;
                             }

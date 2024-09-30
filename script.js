@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
 const staticRender = false;
-const pixelScaleFactor = 4;
+const pixelScaleFactor = 2;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -86,6 +86,8 @@ tempCanvas.height = h;
 
 let lastFrameTime = 0;
 
+
+
 async function loop(currentTime) {
     const deltaTime = (currentTime - lastFrameTime) * 0.001;
     lastFrameTime = currentTime;
@@ -118,6 +120,7 @@ async function initGPU() {
     } else {
         if (await setupGPUDevice(tempCanvas)) {
             await scene.setup(w, h);
+            scene.camera.pos = [0, 1, 0];
             requestAnimationFrame(loop);
         }
     }
