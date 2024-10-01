@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
 const staticRender = false;
-const pixelScaleFactor = 4;
+const pixelScaleFactor = 2;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -98,7 +98,6 @@ async function loop(currentTime) {
     } else {
         let moveVec = vnorm(vadd(vscalar(camera.forward, cameraFVel), vscalar(camera.right, cameraRVel)));
         camera.pos = vadd(camera.pos, vscalar(moveVec, deltaTime * moveSpeed));
-
         camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
     }
 

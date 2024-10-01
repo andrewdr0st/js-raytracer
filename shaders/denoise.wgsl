@@ -10,9 +10,9 @@ struct parameters {
 
 @group(0) @binding(0) var otex: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(1) var rtex: texture_storage_2d<rgba8unorm, read>;
-@group(0) @binding(2) var ntex: texture_storage_2d<rgba16float, read>;
-@group(0) @binding(3) var ptex: texture_storage_2d<rgba16float, read>;
-@group(1) @binding(0) var<storage, read> params: parameters;
+@group(1) @binding(0) var ntex: texture_storage_2d<rgba16float, read>;
+@group(1) @binding(1) var ptex: texture_storage_2d<rgba16float, read>;
+@group(2) @binding(0) var<storage, read> params: parameters;
 
 @compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
     if (id.x > textureDimensions(otex).x) {

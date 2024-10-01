@@ -14,6 +14,7 @@ let uniformLayout;
 let raytraceTextureLayout;
 let npTextureLayout;
 let denoiseTextureLayout;
+let denoiseNpLayout;
 let objectsLayout;
 let materialsLayout;
 let denoiseParamsLayout;
@@ -99,12 +100,18 @@ async function setupGPUDevice(canvas) {
                 binding: 1,
                 visibility: GPUShaderStage.COMPUTE,
                 storageTexture: { format: "rgba8unorm", access: "read-only" }
-            }, {
-                binding: 2,
+            }
+        ]
+    });
+
+    denoiseNpLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
                 visibility: GPUShaderStage.COMPUTE,
                 storageTexture: { format: "rgba16float", access: "read-only" }
             }, {
-                binding: 3,
+                binding: 1,
                 visibility: GPUShaderStage.COMPUTE,
                 storageTexture: { format: "rgba16float", access: "read-only" }
             }
@@ -185,6 +192,7 @@ async function setupGPUDevice(canvas) {
     const denoisePipelineLayout = device.createPipelineLayout({
         bindGroupLayouts: [
             denoiseTextureLayout,
+            denoiseNpLayout,
             denoiseParamsLayout
         ]
     });
@@ -201,7 +209,7 @@ async function setupGPUDevice(canvas) {
     computeContext.configure({
         device,
         format: "rgba8unorm",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC
     });
 
     raytraceTexture = device.createTexture({
@@ -265,18 +273,6 @@ async function renderGPU(scene) {
         entries: [
             { binding: 0, resource: normalsTexture.createView() },
             { binding: 1, resource: positionsTexture.createView() }
-        ]
-    });
-
-    let finalTexture = computeContext.getCurrentTexture();
-
-    const textureBindGroup = device.createBindGroup({
-        layout: denoiseTextureLayout,
-        entries: [
-            { binding: 0, resource: finalTexture.createView() },
-            { binding: 1, resource: raytraceTexture.createView() },
-            { binding: 2, resource: normalsTexture.createView() },
-            { binding: 3, resource: positionsTexture.createView() }
         ]
     });
 
@@ -348,21 +344,21 @@ async function renderGPU(scene) {
     });
 
     let cphi = 10.0;
-    let nphi = 0.3;
-    let pphi = 10.0;
+    let nphi = 0.2;
+    let pphi = 30.0;
     let stepw = 1.0;
     let params = [
-        1 / 256, 1 / 64, 3 / 128, 1 / 64, 1 / 256,
-        1 / 64, 1 / 16, 3 / 32, 1 / 16, 1 / 64,
-        3 / 128, 3 / 32, 9 / 64, 3 / 32, 3 / 128,
-        1 / 64, 1 / 16, 3 / 32, 1 / 16, 1 / 64,
-        1 / 256, 1 / 64, 3 / 128, 1 / 64, 1 / 256,
+        1/256, 1/64, 3/128, 1/64, 1/256,
+        1/64 , 1/16, 3/32 , 1/16, 1/64,
+        3/128, 3/32, 9/64 , 3/32, 3/128,
+        1/64 , 1/16, 3/32 , 1/16, 1/64,
+        1/256, 1/64, 3/128, 1/64, 1/256,
         cphi, nphi, pphi,
         -2, -2, -1, -2, 0, -2, 1, -2, 2, -2,
         -2, -1, -1, -1, 0, -1, 1, -1, 2, -1,
-        -2, 0, -1, 0, 0, 0, 1, 0, 2, 0,
-        -2, 1, -1, 1, 0, 1, 1, 1, 2, 1,
-        -2, 2, -1, 2, 0, 2, 1, 2, 2, 2,
+        -2, 0 , -1, 0 , 0,  0,  1, 0,  2, 0,
+        -2, 1 , -1, 1 , 0,  1,  1, 1,  2, 1,
+        -2, 2 , -1, 2 , 0,  2,  1, 2,  2, 2,
         stepw, 0
     ];
     let paramsF = new Float32Array(params);
@@ -382,6 +378,24 @@ async function renderGPU(scene) {
         ]
     });
 
+    let finalTexture = computeContext.getCurrentTexture();
+
+    const textureBindGroup = device.createBindGroup({
+        layout: denoiseTextureLayout,
+        entries: [
+            { binding: 0, resource: finalTexture.createView() },
+            { binding: 1, resource: raytraceTexture.createView() }
+        ]
+    });
+
+    const denoiseNpBindGroup = device.createBindGroup({
+        layout: denoiseNpLayout,
+        entries: [
+            { binding: 0, resource: normalsTexture.createView() },
+            { binding: 1, resource: positionsTexture.createView() }
+        ]
+    });
+
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
 
@@ -398,17 +412,25 @@ async function renderGPU(scene) {
     pass.setBindGroup(2, objectsBindGroup);
     pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
 
-    pass.setPipeline(denoisePipeline);
-    pass.setBindGroup(0, textureBindGroup);
-    pass.setBindGroup(1, denoiseParamsBindGroup);
-    pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
-
-    stepw *= 2;
-    params[78] = stepw;
-    paramsF = new Float32Array(params);
-    //device.queue.writeBuffer()
-
     pass.end();
+
+    let denoisePassCount = 2;
+    
+    for (let i = 0; i < denoisePassCount; i++) {
+        const dpass = encoder.beginComputePass({ label: "denoise pass "});
+        dpass.setPipeline(denoisePipeline);
+        dpass.setBindGroup(0, textureBindGroup);
+        dpass.setBindGroup(1, denoiseNpBindGroup);
+        dpass.setBindGroup(2, denoiseParamsBindGroup);
+        dpass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+        dpass.end();
+
+        if (i + 1 < denoisePassCount) {
+            encoder.copyTextureToTexture({texture: finalTexture}, {texture: raytraceTexture}, {width: camera.imgW, height: camera.imgH});
+            stepw++;
+            device.queue.writeBuffer(denoiseParamsBuffer, 78 * 4, new Float32Array([stepw]));
+        }
+    }
 
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);

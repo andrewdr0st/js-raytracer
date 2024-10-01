@@ -4,7 +4,7 @@ struct cameraData {
     raysPerPixel: u32,
     topLeftPixel: vec3f,
     bounceCount: u32,
-    pixelDeltaU: vec3f, 
+    pixelDeltaU: vec3f,
     pixelDeltaV: vec3f,
     backgroundColor: vec3f
 };
@@ -52,7 +52,7 @@ struct hitRec {
     }
     
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-    var rngState = ((id.x * 2167) ^ (id.y * 31802381)) + u32((camera.pos.x + 17.93258) * 123457 - (camera.pos.y - 93.11646) * 157141 - (camera.pos.z + 572.0248) * 403831);
+    var rngState = u32((id.x * 2167) ^ ((id.y * 31802381) << 1)) + u32(camera.pos.x * 123457.0 + camera.pos.y * 157141.0 + camera.pos.z * 403831.0);
     
     var totalColor = vec3f(0, 0, 0);
 
