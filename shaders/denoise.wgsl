@@ -20,7 +20,6 @@ struct parameters {
     }
 
     var sum = vec4f(0.0);
-    let step = vec2f(1.0 / f32(textureDimensions(otex).x), 1.0 / f32(textureDimensions(otex).y));
     let cval = textureLoad(rtex, id.xy);
     let nval = textureLoad(ntex, id.xy);
     let pval = textureLoad(ptex, id.xy);
@@ -30,7 +29,7 @@ struct parameters {
 
 
     for (var i = 0; i < 25; i++) {
-        let uv = id.xy + vec2u(params.offset[i] * step * params.stepwidth);
+        let uv = id.xy + vec2u(params.offset[i] * params.stepwidth);
 
         let ctmp = textureLoad(rtex, uv);
         t = cval - ctmp;
@@ -52,7 +51,7 @@ struct parameters {
         cumulative += weight * params.kernel[i];
     }
     
-    //textureStore(otex, id.xy, vec4f(pval));
+    //textureStore(otex, id.xy, cval);
     textureStore(otex, id.xy, sum / cumulative);
 }
 

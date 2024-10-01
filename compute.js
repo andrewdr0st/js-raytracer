@@ -347,9 +347,9 @@ async function renderGPU(scene) {
         ]
     });
 
-    let cphi = 8.0;
+    let cphi = 10.0;
     let nphi = 0.3;
-    let pphi = 50.0;
+    let pphi = 10.0;
     let stepw = 1.0;
     let params = [
         1 / 256, 1 / 64, 3 / 128, 1 / 64, 1 / 256,
