@@ -6,6 +6,7 @@ let npPipeline;
 let denoisePipeline;
 
 let computeContext;
+let raytraceTexture;
 let normalsTexture;
 let positionsTexture;
 
@@ -36,10 +37,21 @@ async function setupGPUDevice(canvas) {
     }
 
     let raytaceCode = await loadWGSLShader("raytrace.wgsl");
-
     const raytraceModule = device.createShaderModule({
         label: "Raytrace module",
         code: raytaceCode
+    });
+
+    let npCode = await loadWGSLShader("normalspositions.wgsl");
+    const npModule = device.createShaderModule({
+        label: "normals positions module",
+        code: npCode
+    });
+
+    let denoiseCode = await loadWGSLShader("denoise.wgsl");
+    const denoiseModule = device.createShaderModule({
+        label: "denoise module",
+        code: denoiseCode
     });
 
     uniformLayout = device.createBindGroupLayout({
@@ -85,15 +97,15 @@ async function setupGPUDevice(canvas) {
             }, {
                 binding: 1,
                 visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba8unorm" }
+                storageTexture: { format: "rgba8unorm", access: "read-only" }
             }, {
                 binding: 2,
                 visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba16float" }
+                storageTexture: { format: "rgba16float", access: "read-only" }
             }, {
                 binding: 3,
                 visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba16float" }
+                storageTexture: { format: "rgba16float", access: "read-only" }
             }
         ]
     });
@@ -143,11 +155,47 @@ async function setupGPUDevice(canvas) {
         }
     });
 
+    const npPipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [
+            uniformLayout,
+            npTextureLayout,
+            objectsLayout,
+        ]
+    });
+
+    npPipeline = device.createComputePipeline({
+        label: "normals and positions pipeline",
+        layout: npPipelineLayout,
+        compute: {
+            module: npModule
+        }
+    });
+
+    const denoisePipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [
+            denoiseTextureLayout
+        ]
+    });
+
+    denoisePipeline = device.createComputePipeline({
+        label: "denoise pipeline",
+        layout: denoisePipelineLayout,
+        compute: {
+            module: denoiseModule
+        }
+    });
+
     computeContext = canvas.getContext("webgpu");
     computeContext.configure({
         device,
         format: "rgba8unorm",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+    });
+
+    raytraceTexture = device.createTexture({
+        size: [canvas.width, canvas.height],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });
 
     normalsTexture = device.createTexture({
@@ -193,12 +241,30 @@ async function renderGPU(scene) {
         ]
     });
 
-    let texture = computeContext.getCurrentTexture();
-
-    const textureBindGroup = device.createBindGroup({
+    const raytraceTextureBindGroup = device.createBindGroup({
         layout: raytraceTextureLayout,
         entries: [
-            { binding: 0, resource: texture.createView() }
+            { binding: 0, resource: raytraceTexture.createView() }
+        ]
+    });
+
+    const npTextureBindGroup = device.createBindGroup({
+        layout: npTextureLayout,
+        entries: [
+            { binding: 0, resource: normalsTexture.createView() },
+            { binding: 1, resource: positionsTexture.createView() }
+        ]
+    });
+
+    let finalTexture = computeContext.getCurrentTexture();
+
+    const textureBindGroup = device.createBindGroup({
+        layout: denoiseTextureLayout,
+        entries: [
+            { binding: 0, resource: finalTexture.createView() },
+            { binding: 1, resource: raytraceTexture.createView() },
+            { binding: 2, resource: normalsTexture.createView() },
+            { binding: 3, resource: positionsTexture.createView() }
         ]
     });
 
@@ -274,10 +340,21 @@ async function renderGPU(scene) {
 
     pass.setPipeline(raytracePipeline);
     pass.setBindGroup(0, uniformBindGroup);
-    pass.setBindGroup(1, textureBindGroup);
+    pass.setBindGroup(1, raytraceTextureBindGroup);
     pass.setBindGroup(2, objectsBindGroup);
     pass.setBindGroup(3, materialsBindGroup);
     pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+
+    pass.setPipeline(npPipeline);
+    pass.setBindGroup(0, uniformBindGroup);
+    pass.setBindGroup(1, npTextureBindGroup);
+    pass.setBindGroup(2, objectsBindGroup);
+    pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+
+    pass.setPipeline(denoisePipeline);
+    pass.setBindGroup(0, textureBindGroup);
+    pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+
     pass.end();
 
     const commandBuffer = encoder.finish();
