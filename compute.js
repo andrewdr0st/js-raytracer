@@ -1,11 +1,20 @@
 let adapter;
 let device;
-let raytraceModule;
-let pipeline;
-let computeContext;
 
+let raytracePipeline;
+let npPipeline;
+let denoisePipeline;
+
+let computeContext;
 let normalsTexture;
 let positionsTexture;
+
+let uniformLayout;
+let raytraceTextureLayout;
+let npTextureLayout;
+let denoiseTextureLayout;
+let objectsLayout;
+let materialsLayout;
 
 const workgroupX = 64;
 
@@ -22,20 +31,113 @@ async function setupGPUDevice(canvas) {
     adapter = await navigator.gpu?.requestAdapter();
     device = await adapter?.requestDevice();
     if (!device) {
-        fail('need a browser that supports WebGPU');
+        alert('need a browser that supports WebGPU');
         return false;
     }
 
     let raytaceCode = await loadWGSLShader("raytrace.wgsl");
 
-    raytraceModule = device.createShaderModule({
+    const raytraceModule = device.createShaderModule({
         label: "Raytrace module",
         code: raytaceCode
     });
 
-    pipeline = device.createComputePipeline({
+    uniformLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "uniform" }
+            }
+        ]
+    });
+
+    raytraceTextureLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba8unorm" }
+            }
+        ]
+    });
+
+    npTextureLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba16float" }
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba16float" }
+            }
+        ]
+    });
+
+    denoiseTextureLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba8unorm" }
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba8unorm" }
+            }, {
+                binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba16float" }
+            }, {
+                binding: 3,
+                visibility: GPUShaderStage.COMPUTE,
+                storageTexture: { format: "rgba16float" }
+            }
+        ]
+    });
+
+    objectsLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {
+                binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }
+        ]
+    });
+
+    materialsLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }
+        ]
+    });
+
+    const raytracePipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [
+            uniformLayout,
+            raytraceTextureLayout,
+            objectsLayout,
+            materialsLayout
+        ]
+    });
+
+    raytracePipeline = device.createComputePipeline({
         label: "raytrace pipeline",
-        layout: "auto",
+        layout: raytracePipelineLayout,
         compute: {
             module: raytraceModule
         }
@@ -54,11 +156,13 @@ async function setupGPUDevice(canvas) {
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });
 
-    positionsTexture = device.createTexure({
+    positionsTexture = device.createTexture({
         size: [canvas.width, canvas.height],
         format: "rgba16float",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });
+
+
 
     return true;
 }
@@ -83,7 +187,7 @@ async function renderGPU(scene) {
     device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(camera.backgroundColor));
 
     const uniformBindGroup = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
+        layout: uniformLayout,
         entries: [
             { binding: 0, resource: { buffer: cameraBuffer } }
         ]
@@ -92,24 +196,11 @@ async function renderGPU(scene) {
     let texture = computeContext.getCurrentTexture();
 
     const textureBindGroup = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(1),
+        layout: raytraceTextureLayout,
         entries: [
             { binding: 0, resource: texture.createView() }
         ]
     });
-
-    let materials = [];
-    for (let i = 0; i < materialList.length; i++) {
-        materials = materials.concat(materialList[i].getValues());
-    }
-    materials = new Float32Array(materials);
-
-    const materialBuffer = device.createBuffer({
-        label: "materials buffer",
-        size: materials.byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(materialBuffer, 0, materials);
 
     const spheresBuffer = device.createBuffer({
         label: "spheres buffer",
@@ -121,15 +212,6 @@ async function renderGPU(scene) {
         device.queue.writeBuffer(spheresBuffer, i * sphereSize, new Float32Array(s.getValues()));
         device.queue.writeBuffer(spheresBuffer, i * sphereSize + 16, new Uint32Array(s.getM()));
     }
-
-    const spheresBindGroup = device.createBindGroup({
-        label: "sphere bind group",
-        layout: pipeline.getBindGroupLayout(2),
-        entries: [
-            { binding: 0, resource: { buffer: spheresBuffer } },
-            { binding: 1, resource: { buffer: materialBuffer } }
-        ]
-    });
 
     let triOffset = 0;
     let vOffset = 0;
@@ -156,24 +238,45 @@ async function renderGPU(scene) {
         vOffset += m.vCount * vertexSize;
     }
 
-    const trianglesBindGroup = device.createBindGroup({
+    const objectsBindGroup = device.createBindGroup({
         label: "triangles bind group",
-        layout: pipeline.getBindGroupLayout(3),
+        layout: objectsLayout,
         entries: [
             { binding: 0, resource: { buffer: triangleBuffer } },
-            { binding: 1, resource: { buffer: trianglePointBuffer } }
+            { binding: 1, resource: { buffer: trianglePointBuffer } },
+            { binding: 2, resource: { buffer: spheresBuffer } }
         ]
     });
 
+    let materials = [];
+    for (let i = 0; i < materialList.length; i++) {
+        materials = materials.concat(materialList[i].getValues());
+    }
+    materials = new Float32Array(materials);
+
+    const materialBuffer = device.createBuffer({
+        label: "materials buffer",
+        size: materials.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(materialBuffer, 0, materials);
+
+    const materialsBindGroup = device.createBindGroup({
+        label: "materials bind group",
+        layout: materialsLayout,
+        entries: [
+            { binding: 0, resource: { buffer : materialBuffer } }
+        ]
+    });
 
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
 
-    pass.setPipeline(pipeline);
+    pass.setPipeline(raytracePipeline);
     pass.setBindGroup(0, uniformBindGroup);
     pass.setBindGroup(1, textureBindGroup);
-    pass.setBindGroup(2, spheresBindGroup);
-    pass.setBindGroup(3, trianglesBindGroup);
+    pass.setBindGroup(2, objectsBindGroup);
+    pass.setBindGroup(3, materialsBindGroup);
     pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
     pass.end();
 

@@ -41,10 +41,10 @@ struct hitRec {
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
-@group(2) @binding(0) var<storage, read> spheres: array<sphere>;
-@group(2) @binding(1) var<storage, read> materials: array<material>;
-@group(3) @binding(0) var<storage, read> triangles: array<triangle>;
-@group(3) @binding(1) var<storage, read> triPoints: array<vec3f>;
+@group(2) @binding(0) var<storage, read> triangles: array<triangle>;
+@group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
+@group(2) @binding(2) var<storage, read> spheres: array<sphere>;
+@group(3) @binding(0) var<storage, read> materials: array<material>;
 
 @compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
     if (id.x > textureDimensions(tex).x) {
