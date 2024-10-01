@@ -16,6 +16,7 @@ let npTextureLayout;
 let denoiseTextureLayout;
 let objectsLayout;
 let materialsLayout;
+let denoiseParamsLayout;
 
 const workgroupX = 64;
 
@@ -138,6 +139,16 @@ async function setupGPUDevice(canvas) {
         ]
     });
 
+    denoiseParamsLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }
+        ]
+    });
+
     const raytracePipelineLayout = device.createPipelineLayout({
         bindGroupLayouts: [
             uniformLayout,
@@ -173,7 +184,8 @@ async function setupGPUDevice(canvas) {
 
     const denoisePipelineLayout = device.createPipelineLayout({
         bindGroupLayouts: [
-            denoiseTextureLayout
+            denoiseTextureLayout,
+            denoiseParamsLayout
         ]
     });
 
@@ -335,6 +347,41 @@ async function renderGPU(scene) {
         ]
     });
 
+    let cphi = 8.0;
+    let nphi = 0.3;
+    let pphi = 50.0;
+    let stepw = 1.0;
+    let params = [
+        1 / 256, 1 / 64, 3 / 128, 1 / 64, 1 / 256,
+        1 / 64, 1 / 16, 3 / 32, 1 / 16, 1 / 64,
+        3 / 128, 3 / 32, 9 / 64, 3 / 32, 3 / 128,
+        1 / 64, 1 / 16, 3 / 32, 1 / 16, 1 / 64,
+        1 / 256, 1 / 64, 3 / 128, 1 / 64, 1 / 256,
+        cphi, nphi, pphi,
+        -2, -2, -1, -2, 0, -2, 1, -2, 2, -2,
+        -2, -1, -1, -1, 0, -1, 1, -1, 2, -1,
+        -2, 0, -1, 0, 0, 0, 1, 0, 2, 0,
+        -2, 1, -1, 1, 0, 1, 1, 1, 2, 1,
+        -2, 2, -1, 2, 0, 2, 1, 2, 2, 2,
+        stepw, 0
+    ];
+    let paramsF = new Float32Array(params);
+
+    const denoiseParamsBuffer = device.createBuffer({
+        label: "denoise params buffer",
+        size: paramsF.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(denoiseParamsBuffer, 0, paramsF);
+
+    const denoiseParamsBindGroup = device.createBindGroup({
+        label: "denoise params bind group",
+        layout: denoiseParamsLayout,
+        entries: [
+            { binding: 0, resource: { buffer : denoiseParamsBuffer } }
+        ]
+    });
+
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
 
@@ -353,7 +400,13 @@ async function renderGPU(scene) {
 
     pass.setPipeline(denoisePipeline);
     pass.setBindGroup(0, textureBindGroup);
+    pass.setBindGroup(1, denoiseParamsBindGroup);
     pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+
+    stepw *= 2;
+    params[78] = stepw;
+    paramsF = new Float32Array(params);
+    //device.queue.writeBuffer()
 
     pass.end();
 
