@@ -25,7 +25,7 @@ const triangleSize = 16;
 const vertexSize = 16;
 const sphereSize = 32;
 
-const runDenoiser = true;
+const runDenoiser = false;
 const denoisePassCount = 3;
 
 async function loadWGSLShader(f) {

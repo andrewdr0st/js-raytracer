@@ -1,4 +1,6 @@
 let vertexOffset = -1;
+let tcOffset = -1;
+let vnormalOffset = -1;
 let totalTris = 0;
 
 class Mesh {
@@ -7,6 +9,10 @@ class Mesh {
         this.tCount = 0;
         this.verticies = [];
         this.vCount = 0;
+        this.textureCoords = [];
+        this.tcCount = 0;
+        this.normals = [];
+        this.nCount = 0;
 
         this.material;
     }
@@ -28,20 +34,41 @@ class Mesh {
                 this.verticies = this.verticies.concat([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 0]);
                 this.vCount++;
             } else if (type == "vt") {
-                //texture coords
+                this.textureCoords = this.textureCoords.concat([parseFloat(parts[1]), parseFloat(parts[2])]);
+                this.tcCount++;
             } else if (type == "vn") {
-                //vertex normals
+                this.normals = this.normals.concat([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 0]);
+                this.nCount++;
             } else if (type == "f") {
-                if (invert) {
-                    this.triangles.push(new Triangle(parseInt(parts[3]) + vertexOffset, parseInt(parts[2]) + vertexOffset, parseInt(parts[1]) + vertexOffset, this.material.id));
+                let v1 = parts[1].split("/");
+                let v2 = parts[2].split("/");
+                let v3 = parts[3].split("/");
+                if (v1.length == 1) {
+                    if (invert) {
+                        this.triangles.push(new Triangle(parseInt(v3[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v1[0]) + vertexOffset, this.material.id));
+                    } else {
+                        this.triangles.push(new Triangle(parseInt(v1[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v3[0]) + vertexOffset, this.material.id));
+                    }
+                } else if (v1.length == 2) {
+                    if (invert) {
+                        this.triangles.push(new Triangle(parseInt(v3[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v1[0]) + vertexOffset, this.material.id, parseInt(v3[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v1[1]) + tcOffset));
+                    } else {
+                        this.triangles.push(new Triangle(parseInt(v1[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v3[0]) + vertexOffset, this.material.id, parseInt(v1[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v3[1]) + tcOffset));
+                    }
                 } else {
-                    this.triangles.push(new Triangle(parseInt(parts[1]) + vertexOffset, parseInt(parts[2]) + vertexOffset, parseInt(parts[3]) + vertexOffset, this.material.id));
+                    if (invert) {
+                        this.triangles.push(new Triangle(parseInt(v3[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v1[0]) + vertexOffset, this.material.id, parseInt(v3[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v1[1]) + tcOffset, parseInt(v3[2]) + vnormalOffset, parseInt(v2[2]) + vnormalOffset, parseInt(v1[2]) + vnormalOffset));
+                    } else {
+                        this.triangles.push(new Triangle(parseInt(v1[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v3[0]) + vertexOffset, this.material.id, parseInt(v1[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v3[1]) + tcOffset, parseInt(v1[2]) + vnormalOffset, parseInt(v2[2]) + vnormalOffset, parseInt(v3[2]) + vnormalOffset));
+                    }
                 }
                 this.tCount++;
             }
         }
 
         vertexOffset += this.vCount;
+        tcOffset += this.tcCount;
+        vnormalOffset += this.nCount;
         totalTris += this.tCount;
     }
 
