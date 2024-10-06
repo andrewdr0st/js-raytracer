@@ -7,6 +7,7 @@ let denoisePipeline;
 
 let computeContext;
 let raytraceTexture;
+let prevTexture;
 let normalsTexture;
 let positionsTexture;
 
@@ -33,7 +34,7 @@ async function loadWGSLShader(f) {
     return await response.text();
 }
 
-async function setupGPUDevice(canvas) {
+async function setupGPUDevice(canvas, static=false) {
     adapter = await navigator.gpu?.requestAdapter();
     device = await adapter?.requestDevice();
     if (!device) {
@@ -41,9 +42,9 @@ async function setupGPUDevice(canvas) {
         return false;
     }
 
-    createBindGroupLayouts();
+    createBindGroupLayouts(static);
 
-    await createPipelines();
+    await createPipelines(static);
 
     computeContext = canvas.getContext("webgpu");
     computeContext.configure({
@@ -52,12 +53,12 @@ async function setupGPUDevice(canvas) {
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC
     });
 
-    createRenderTextures();
+    createRenderTextures(static);
 
     return true;
 }
 
-async function renderGPU(scene) {
+async function renderGPU(scene, static=false) {
     let camera = scene.camera;
     let materialList = scene.materialList;
     let meshList = scene.meshList;
@@ -78,6 +79,11 @@ async function renderGPU(scene) {
     device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(camera.pixelDeltaV));
     device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(camera.backgroundColor));
 
+    if (static) {
+        device.queue.writeBuffer(cameraBuffer, 44, new Int32Array([camera.seed]));
+        device.queue.writeBuffer(cameraBuffer, 60, new Int32Array([camera.frameCount]));
+    }
+
     const uniformBindGroup = device.createBindGroup({
         layout: uniformLayout,
         entries: [
@@ -85,12 +91,23 @@ async function renderGPU(scene) {
         ]
     });
 
-    const raytraceTextureBindGroup = device.createBindGroup({
-        layout: raytraceTextureLayout,
-        entries: [
-            { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() }
-        ]
-    });
+    let raytraceTextureBindGroup;
+    if (static) {
+        raytraceTextureBindGroup = device.createBindGroup({
+            layout: raytraceTextureLayout,
+            entries: [
+                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
+                { binding: 0, resource: prevTexture.createView() }
+            ]
+        });
+    } else {
+        raytraceTextureBindGroup = device.createBindGroup({
+            layout: raytraceTextureLayout,
+            entries: [
+                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() }
+            ]
+        });
+    }
 
     const npTextureBindGroup = device.createBindGroup({
         layout: npTextureLayout,
@@ -256,6 +273,10 @@ async function renderGPU(scene) {
         }
     }
 
+    if (static) {
+        encoder.copyTextureToTexture({texture: raytraceTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
+    }
+
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);
 
@@ -263,7 +284,7 @@ async function renderGPU(scene) {
 }
 
 
-function createBindGroupLayouts() {
+function createBindGroupLayouts(static) {
     uniformLayout = device.createBindGroupLayout({
         entries: [
             {
@@ -274,15 +295,31 @@ function createBindGroupLayouts() {
         ]
     });
 
-    raytraceTextureLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba8unorm" }
-            }
-        ]
-    });
+    if (static) {
+        raytraceTextureLayout = device.createBindGroupLayout({
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    storageTexture: { format: "rgba8unorm" }
+                }, {
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    storageTexture: { format: "rgba8unorm" }
+                }
+            ]
+        });
+    } else {
+        raytraceTextureLayout = device.createBindGroupLayout({
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    storageTexture: { format: "rgba8unorm" }
+                }
+            ]
+        });
+    }
 
     npTextureLayout = device.createBindGroupLayout({
         entries: [
@@ -365,8 +402,8 @@ function createBindGroupLayouts() {
     });
 }
 
-async function createPipelines() {
-    let raytaceCode = await loadWGSLShader("raytrace.wgsl");
+async function createPipelines(static) {
+    let raytaceCode = static ? await loadWGSLShader("raytracestatic.wgsl") : await loadWGSLShader("raytrace.wgsl");
     const raytraceModule = device.createShaderModule({
         label: "Raytrace module",
         code: raytaceCode
@@ -434,21 +471,29 @@ async function createPipelines() {
     });
 }
 
-function createRenderTextures() {
+function createRenderTextures(static) {
     raytraceTexture = device.createTexture({
-        size: [canvas.width, canvas.height],
+        size: {width: canvas.width, height: canvas.height},
         format: "rgba8unorm",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });
 
+    if (static) {
+        prevTexture = device.createTexture({
+            size: {width: canvas.width, height: canvas.height},
+            format: "rgba8unorm",
+            usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
+        });
+    }
+
     normalsTexture = device.createTexture({
-        size: [canvas.width, canvas.height],
+        size: {width: canvas.width, height: canvas.height},
         format: "rgba16float",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });
 
     positionsTexture = device.createTexture({
-        size: [canvas.width, canvas.height],
+        size: {width: canvas.width, height: canvas.height},
         format: "rgba16float",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });

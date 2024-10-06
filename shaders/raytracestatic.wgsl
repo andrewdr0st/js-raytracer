@@ -5,7 +5,9 @@ struct cameraData {
     topLeftPixel: vec3f,
     bounceCount: u32,
     pixelDeltaU: vec3f,
+    randomSeed: u32,
     pixelDeltaV: vec3f,
+    frameCount: u32,
     backgroundColor: vec3f
 };
 
@@ -41,6 +43,7 @@ struct hitRec {
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
+@group(1) @binding(1) var prevTex: texture_storage_2d<rgba8unorm, read>;
 @group(2) @binding(0) var<storage, read> triangles: array<triangle>;
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
 @group(2) @binding(2) var<storage, read> spheres: array<sphere>;
@@ -50,10 +53,13 @@ struct hitRec {
     if (id.x > textureDimensions(tex).x) {
         return;
     }
-    
-    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-    var rngState = u32((id.x * 2167) ^ ((id.y * 31802381) << 1)) + u32((camera.pos.x - 1340.23) * 123457.0 + (camera.pos.y - 8501.921) * 157141.0 + (camera.pos.z + 1749.3847) * 403831.0);
-    
+
+    var rngState = ((id.x * 2167) ^ (id.y * 31802381)) + (camera.randomSeed * camera.frameCount * 1401);
+    let xRand = randomF(&rngState) - 0.5;
+    let yRand = randomF(&rngState) - 0.5;
+                
+    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * (f32(id.x) - xRand) + camera.pixelDeltaV * (f32(id.y) - yRand);
+                
     var totalColor = vec3f(0, 0, 0);
 
     let sphereCount = arrayLength(&spheres);
@@ -161,6 +167,11 @@ struct hitRec {
 
     totalColor = max(totalColor, vec3f(0, 0, 0));
     totalColor = sqrt(totalColor);
+
+    let prevColor = textureLoad(prevTex, id.xy);
+    let cFactor = 1 / f32(camera.frameCount);
+                
+    totalColor = totalColor * cFactor + prevColor.rgb * (1 - cFactor);
 
     textureStore(tex, id.xy, vec4f(totalColor, 1));
 }

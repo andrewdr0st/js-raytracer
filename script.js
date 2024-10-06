@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const staticRender = false;
+const staticRender = true;
 const pixelScaleFactor = 1;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
@@ -26,7 +26,7 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let scene = new TestScene();
+let scene = new OrbScene();
 
 let cameraFVel = 0;
 let cameraRVel = 0;
