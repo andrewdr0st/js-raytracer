@@ -41,6 +41,8 @@ struct hitRec {
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
+@group(1) @binding(1) var texSampler: sampler;
+@group(1) @binding(2) var moj: texture_2d<f32>;
 @group(2) @binding(0) var<storage, read> triangles: array<triangle>;
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
 @group(2) @binding(2) var<storage, read> spheres: array<sphere>;

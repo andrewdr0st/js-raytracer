@@ -11,6 +11,10 @@ let prevTexture;
 let normalsTexture;
 let positionsTexture;
 
+let texSampler;
+let texTexture;
+let tex;
+
 let uniformLayout;
 let raytraceTextureLayout;
 let npTextureLayout;
@@ -55,6 +59,8 @@ async function setupGPUDevice(canvas, static=false) {
 
     createRenderTextures(static);
 
+    tex = await loadImage("moj.png");
+
     return true;
 }
 
@@ -91,6 +97,18 @@ async function renderGPU(scene, static=false) {
         ]
     });
 
+    texTexture = device.createTexture({
+        size: {width: tex.width, height: tex.height},
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
+    });
+    device.queue.copyExternalImageToTexture({source: tex}, {texture: texTexture}, {width: tex.width, height: tex.height});
+
+    texSampler = device.createSampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
+    });
+
     let raytraceTextureBindGroup;
     if (static) {
         raytraceTextureBindGroup = device.createBindGroup({
@@ -104,7 +122,9 @@ async function renderGPU(scene, static=false) {
         raytraceTextureBindGroup = device.createBindGroup({
             layout: raytraceTextureLayout,
             entries: [
-                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() }
+                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
+                { binding: 1, resource: texSampler},
+                { binding: 2, resource: texTexture.createView() }
             ]
         });
     }
@@ -236,6 +256,7 @@ async function renderGPU(scene, static=false) {
     });
 
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
+
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
 
     pass.setPipeline(raytracePipeline);
@@ -316,6 +337,14 @@ function createBindGroupLayouts(static) {
                     binding: 0,
                     visibility: GPUShaderStage.COMPUTE,
                     storageTexture: { format: "rgba8unorm" }
+                }, {
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    sampler: {}
+                }, {
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    texture: {format: "rgba8unorm" }
                 }
             ]
         });

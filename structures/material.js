@@ -17,3 +17,9 @@ class Material {
         return [this.r, this.g, this.b, this.e, this.reflectC, this.fuzz, this.refractC, this.ri];
     }
 }
+
+async function loadImage(path) {
+    const response = await fetch("textures/" + path);
+    const blob = await response.blob();
+    return await createImageBitmap(blob);
+}
