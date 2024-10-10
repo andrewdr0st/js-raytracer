@@ -26,8 +26,9 @@ let denoiseParamsLayout;
 
 const workgroupX = 64;
 
-const triangleSize = 16;
+const triangleSize = 32;
 const vertexSize = 16;
+const uvSize = 8;
 const sphereSize = 32;
 
 const runDenoiser = false;
@@ -120,6 +121,7 @@ async function renderGPU(scene, static=false) {
         });
     } else {
         raytraceTextureBindGroup = device.createBindGroup({
+            label: "ray trace texture bind group",
             layout: raytraceTextureLayout,
             entries: [
                 { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
@@ -150,6 +152,7 @@ async function renderGPU(scene, static=false) {
 
     let triOffset = 0;
     let vOffset = 0;
+    let uvOffset = 0;
 
     const triangleBuffer = device.createBuffer({
         label: "triangle buffer",
@@ -173,13 +176,25 @@ async function renderGPU(scene, static=false) {
         vOffset += m.vCount * vertexSize;
     }
 
+    const triangleUvBuffer = device.createBuffer({
+        label: "triangle uv buffer",
+        size: (vertexOffset + 1) * uvSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let i = 0; i < meshList.length; i++) {
+        let m = meshList[i];
+        device.queue.writeBuffer(triangleUvBuffer, uvOffset, m.getUvs());
+        uvOffset += m.vCount * uvSize;
+    }
+
     const objectsBindGroup = device.createBindGroup({
-        label: "triangles bind group",
+        label: "objects bind group",
         layout: objectsLayout,
         entries: [
             { binding: 0, resource: { buffer: triangleBuffer } },
             { binding: 1, resource: { buffer: trianglePointBuffer } },
-            { binding: 2, resource: { buffer: spheresBuffer } }
+            { binding: 2, resource: { buffer: triangleUvBuffer } },
+            { binding: 3, resource: { buffer: spheresBuffer } }
         ]
     });
 
@@ -404,6 +419,10 @@ function createBindGroupLayouts(static) {
                 buffer: { type: "read-only-storage" }
             }, {
                 binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {
+                binding: 3,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
             }

@@ -26,7 +26,8 @@ struct sphere {
 
 struct triangle {
     points: vec3u,
-    m: u32
+    m: u32,
+    uvs: vec3u
 };
 
 struct hitRec {
@@ -45,7 +46,8 @@ struct hitRec {
 @group(1) @binding(2) var moj: texture_2d<f32>;
 @group(2) @binding(0) var<storage, read> triangles: array<triangle>;
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
-@group(2) @binding(2) var<storage, read> spheres: array<sphere>;
+@group(2) @binding(2) var<storage, read> triUvs: array<vec2f>;
+@group(2) @binding(3) var<storage, read> spheres: array<sphere>;
 @group(3) @binding(0) var<storage, read> materials: array<material>;
 
 @compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {

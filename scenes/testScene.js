@@ -17,7 +17,7 @@ class TestScene extends Scene {
         blueCube.setMaterial(this.materialList[3]);
         await blueCube.parseObjFile("cube.obj");
         blueCube.translate([1, 1, 6]);
-        this.meshList.push(blueCube);
+        //this.meshList.push(blueCube);
 
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);

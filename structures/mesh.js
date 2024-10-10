@@ -88,6 +88,10 @@ class Mesh {
         return new Float32Array(this.verticies);
     }
 
+    getUvs() {
+        return new Float32Array(this.textureCoords);
+    }
+
     translate(t) {
         for (let i = 0; i < this.verticies.length; i += 4) {
             this.verticies[i] += t[0];
