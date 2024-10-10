@@ -2,8 +2,8 @@ class TestScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
         this.camera.backgroundColor = [0.5, 0.5, 0.6];
-        this.camera.bounceCount = 10;
-        this.camera.raysPerPixel = 2;
+        this.camera.bounceCount = 8;
+        this.camera.raysPerPixel = 8;
     }
 
     async setupObjects() {
@@ -33,7 +33,7 @@ class TestScene extends Scene {
         this.materialList.push(new Material(0.2, 0.4, 0.25, 0));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 1.0));
         this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1));
-        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0.75, 1.2));
+        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0.75, 1.5));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5, 1.5));
     }
 }

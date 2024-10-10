@@ -77,8 +77,7 @@ struct hitRec {
         for (var b: u32 = 0; b < bounceCount; b++) {
             tMin = 0.001;
             tMax = 10000.0;
-            var ray = hr.d;
-            ray = normalize(ray);
+            var ray = normalize(hr.d);
             var orig = hr.p;
             hr.h = false;
             hr.m.c = backgroundColor;
@@ -132,7 +131,7 @@ struct hitRec {
 
             let matRand = randomF(&rngState);
             if (hr.m.ri > 0) {
-                let cosTheta = dot(ray, -hr.n);
+                let cosTheta = dot(-ray, hr.n);
                 let refractiveRatio = select(hr.m.ri, 1.0 / hr.m.ri, hr.frontFace);
                 let r = refract(ray, hr.n, refractiveRatio);
                 if (all(r == vec3f(0.0)) || schlick(cosTheta, refractiveRatio) > randomF(&rngState)) {
@@ -212,7 +211,7 @@ fn hitTriangle(a: vec3f, b: vec3f, c: vec3f, orig: vec3f, dir: vec3f, tMax: f32)
 fn schlick(c: f32, ri: f32) -> f32 {
     var r0 = (1 - ri) / (1 + ri);
     r0 = r0 * r0;
-    return r0 + (1 - r0) * pow((1 - c), 5);
+    return r0 + (1 - r0) * pow(1 - c, 5);
 }
 
 fn randomF(state: ptr<function, u32>) -> f32 {
