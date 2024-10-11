@@ -209,8 +209,8 @@ fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
     let a = triPoints[tri.points.x];
     let b = triPoints[tri.points.y];
     let c = triPoints[tri.points.z];
-    let n = normalize(cross(b - a, c - a));
-    hr.n = n;
+    let n = cross(b - a, c - a);
+    hr.n = normalize(n);
     let t = hitPlane(n, a, orig, dir);
     if (t < 0 || t >= tMax) {
         return hr;
