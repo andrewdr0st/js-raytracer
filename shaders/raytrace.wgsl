@@ -37,7 +37,9 @@ struct hitRec {
     h: bool,
     d: vec3f,
     frontFace: bool,
-    m: material
+    m: material,
+    tex: bool,
+    uv: vec2f
 };
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
@@ -54,6 +56,7 @@ struct hitRec {
     if (id.x > textureDimensions(tex).x) {
         return;
     }
+    let mojDim = textureDimensions(moj);
     
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
     var rngState = u32((id.x * 2167) ^ ((id.y * 31802381) << 1)) + u32((camera.pos.x - 1340.23) * 123457.0 + (camera.pos.y - 8501.921) * 157141.0 + (camera.pos.z + 1749.3847) * 403831.0);
@@ -86,6 +89,7 @@ struct hitRec {
             hr.h = false;
             hr.m.c = backgroundColor;
             hr.m.e = 1;
+            hr.tex = false;
 
             for (var i: u32 = 0; i < sphereCount; i++) {
                 let s = spheres[i];
@@ -110,10 +114,7 @@ struct hitRec {
 
             for (var i: u32 = 0; i < triCount; i++) {
                 let tri = triangles[i];
-                let a = triPoints[tri.points.x];
-                let b = triPoints[tri.points.y];
-                let c = triPoints[tri.points.z];
-                var thr = hitTriangle(a, b, c, orig, ray, tMax);
+                var thr = hitTriangle(tri, orig, ray, tMax);
 
                 if (thr.h && thr.t > tMin && thr.t < tMax) {
                     tMax = thr.t;
@@ -126,12 +127,20 @@ struct hitRec {
                     hr.h = thr.h;
                     hr.p = ray * hr.t + orig;
                     hr.m = materials[tri.m];
+                    hr.tex = thr.tex;
+                    hr.uv = thr.uv;
                 }
             }
             
             let emitLight = hr.m.c * hr.m.e;
             incomingLight += emitLight * rayColor;
-            rayColor *= hr.m.c;
+            if (hr.tex) {
+                let tc = vec2u(u32(hr.uv.x * f32(mojDim.x)), u32(hr.uv.y * f32(mojDim.y)));
+                rayColor *= textureLoad(moj, tc, 0).xyz;
+                //rayColor *= vec3f(hr.uv.x, hr.uv.y, 0);
+            } else {
+                rayColor *= hr.m.c;
+            }
 
             let matRand = randomF(&rngState);
             if (hr.m.ri > 0) {
@@ -194,9 +203,12 @@ fn hitPlane(n: vec3f, p: vec3f, orig: vec3f, dir: vec3f) -> f32 {
     return numerator / denominator;
 }
 
-fn hitTriangle(a: vec3f, b: vec3f, c: vec3f, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
+fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
     var hr: hitRec;
     hr.h = false;
+    let a = triPoints[tri.points.x];
+    let b = triPoints[tri.points.y];
+    let c = triPoints[tri.points.z];
     let n = normalize(cross(b - a, c - a));
     hr.n = n;
     let t = hitPlane(n, a, orig, dir);
@@ -209,6 +221,16 @@ fn hitTriangle(a: vec3f, b: vec3f, c: vec3f, orig: vec3f, dir: vec3f, tMax: f32)
     let nb = cross(a - c, p - c);
     let nc = cross(b - a, p - a);
     hr.h = dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
+    if (hr.h) {
+        hr.tex = true;
+        let ndn = dot(n, n);
+        let beta = dot(n, nb) / ndn;
+        let gamma = dot(n, nc) / ndn;
+        let ta = triUvs[tri.uvs.x];
+        let tb = triUvs[tri.uvs.y];
+        let tc = triUvs[tri.uvs.z];
+        hr.uv = ta + beta * (tb - ta) + gamma * (tc - ta);
+    }
     return hr;
 }
 

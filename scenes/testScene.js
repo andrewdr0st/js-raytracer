@@ -10,8 +10,11 @@ class TestScene extends Scene {
         let floor = new Mesh();
         floor.setMaterial(this.materialList[0]);
         await floor.parseObjFile("plane.obj");
-        floor.scale([20, 1, 20]);
+        //floor.scale([2, 1, 2]);
+        floor.scale([0.5, 1, 0.5]);
         this.meshList.push(floor);
+
+        console.log(floor);
 
         let blueCube = new Mesh();
         blueCube.setMaterial(this.materialList[3]);
