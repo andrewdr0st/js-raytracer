@@ -32,8 +32,8 @@ class TestScene extends Scene {
     setupMaterials() {
         this.materialList.push(new Material(0.2, 0.4, 0.25, 0, 0, 0, 0, 2));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 1.0));
-        this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1));
-        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 1));
+        this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1, 0, 1));
+        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 0));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
     }
 }

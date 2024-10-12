@@ -41,6 +41,8 @@ struct hitRec {
     uv: vec2f
 };
 
+const PI = 3.14159265359;
+
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read> triangles: array<triangle>;
@@ -105,6 +107,9 @@ struct hitRec {
                     }
                     hr.h = true;
                     hr.m = materials[s.m];
+                    let theta = acos(-hr.n.y);
+                    let phi = atan2(-hr.n.z, hr.n.x) + PI;
+                    hr.uv = vec2f(phi / (2 * PI), theta / PI);
                 }
             }
 
@@ -132,6 +137,7 @@ struct hitRec {
             if (hr.m.tex >= 0) {
                 let tc = vec2u(u32(hr.uv.x * 8.0), u32(hr.uv.y * 8.0));
                 rayColor *= textureLoad(textures, tc, hr.m.tex, 0).xyz;
+                //rayColor *= vec3f(hr.uv.x, 0, hr.uv.y);
             } else {
                 rayColor *= hr.m.c;
             }
