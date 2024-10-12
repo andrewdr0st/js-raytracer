@@ -11,9 +11,8 @@ let prevTexture;
 let normalsTexture;
 let positionsTexture;
 
-let texSampler;
-let texTexture;
-let tex;
+let textureArray;
+let texList;
 
 let uniformLayout;
 let raytraceTextureLayout;
@@ -30,6 +29,7 @@ const triangleSize = 32;
 const vertexSize = 16;
 const uvSize = 8;
 const sphereSize = 32;
+const materialSize = 32;
 
 const runDenoiser = false;
 const denoisePassCount = 3;
@@ -60,7 +60,10 @@ async function setupGPUDevice(canvas, static=false) {
 
     createRenderTextures(static);
 
-    tex = await loadImage("moj.png");
+    let t1 = await loadImage("red8x8.png");
+    let t2 = await loadImage("blurple8x8.png");
+    let t3 = await loadImage("checker8x8.png");
+    texList = [t1, t2, t3];
 
     return true;
 }
@@ -98,17 +101,14 @@ async function renderGPU(scene, static=false) {
         ]
     });
 
-    texTexture = device.createTexture({
-        size: {width: tex.width, height: tex.height},
+    textureArray = device.createTexture({
+        size: [8, 8, texList.length],
         format: "rgba8unorm",
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
     });
-    device.queue.copyExternalImageToTexture({source: tex}, {texture: texTexture}, {width: tex.width, height: tex.height});
-
-    texSampler = device.createSampler({
-        magFilter: 'linear',
-        minFilter: 'linear',
-    });
+    for (let i = 0; i < texList.length; i++) {
+        device.queue.copyExternalImageToTexture({source: texList[i]}, {texture: textureArray, origin: {z: i}}, [8, 8]);
+    }
 
     let raytraceTextureBindGroup;
     if (static) {
@@ -124,9 +124,7 @@ async function renderGPU(scene, static=false) {
             label: "ray trace texture bind group",
             layout: raytraceTextureLayout,
             entries: [
-                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
-                { binding: 1, resource: texSampler},
-                { binding: 2, resource: texTexture.createView() }
+                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() }
             ]
         });
     }
@@ -211,11 +209,17 @@ async function renderGPU(scene, static=false) {
     });
     device.queue.writeBuffer(materialBuffer, 0, materials);
 
+    for(let i = 0; i < materialList.length; i++) {
+        let t = materialList[i].getTex();
+        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 4, t);
+    }
+
     const materialsBindGroup = device.createBindGroup({
         label: "materials bind group",
         layout: materialsLayout,
         entries: [
-            { binding: 0, resource: { buffer : materialBuffer } }
+            { binding: 0, resource: { buffer : materialBuffer } },
+            { binding: 1, resource: textureArray.createView() }
         ]
     });
 
@@ -352,14 +356,6 @@ function createBindGroupLayouts(static) {
                     binding: 0,
                     visibility: GPUShaderStage.COMPUTE,
                     storageTexture: { format: "rgba8unorm" }
-                }, {
-                    binding: 1,
-                    visibility: GPUShaderStage.COMPUTE,
-                    sampler: {}
-                }, {
-                    binding: 2,
-                    visibility: GPUShaderStage.COMPUTE,
-                    texture: {format: "rgba8unorm" }
                 }
             ]
         });
@@ -430,11 +426,16 @@ function createBindGroupLayouts(static) {
     });
 
     materialsLayout = device.createBindGroupLayout({
+        label: "materials bind group layout",
         entries: [
             {
                 binding: 0,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                texture: {format: "rgba8unorm", viewDimension: "2d-array"}
             }
         ]
     });

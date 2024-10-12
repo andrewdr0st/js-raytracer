@@ -14,8 +14,8 @@ struct material {
     e: f32,
     reflectChance: f32,
     fuzzFactor: f32,
-    tex: u32,
-    ri: f32
+    ri: f32,
+    tex: i32
 };
 
 struct sphere {
@@ -38,25 +38,22 @@ struct hitRec {
     d: vec3f,
     frontFace: bool,
     m: material,
-    tex: bool,
     uv: vec2f
 };
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
-@group(1) @binding(1) var texSampler: sampler;
-@group(1) @binding(2) var moj: texture_2d<f32>;
 @group(2) @binding(0) var<storage, read> triangles: array<triangle>;
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
 @group(2) @binding(2) var<storage, read> triUvs: array<vec2f>;
 @group(2) @binding(3) var<storage, read> spheres: array<sphere>;
 @group(3) @binding(0) var<storage, read> materials: array<material>;
+@group(3) @binding(1) var textures: texture_2d_array<f32>;
 
 @compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
     if (id.x > textureDimensions(tex).x) {
         return;
     }
-    let mojDim = textureDimensions(moj);
     
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
     var rngState = u32((id.x * 2167) ^ ((id.y * 31802381) << 1)) + u32((camera.pos.x - 1340.23) * 123457.0 + (camera.pos.y - 8501.921) * 157141.0 + (camera.pos.z + 1749.3847) * 403831.0);
@@ -89,7 +86,6 @@ struct hitRec {
             hr.h = false;
             hr.m.c = backgroundColor;
             hr.m.e = 1;
-            hr.tex = false;
 
             for (var i: u32 = 0; i < sphereCount; i++) {
                 let s = spheres[i];
@@ -127,23 +123,21 @@ struct hitRec {
                     hr.h = thr.h;
                     hr.p = ray * hr.t + orig;
                     hr.m = materials[tri.m];
-                    hr.tex = thr.tex;
                     hr.uv = thr.uv;
                 }
             }
             
             let emitLight = hr.m.c * hr.m.e;
             incomingLight += emitLight * rayColor;
-            if (hr.tex) {
-                let tc = vec2u(u32(hr.uv.x * f32(mojDim.x)), u32(hr.uv.y * f32(mojDim.y)));
-                rayColor *= textureLoad(moj, tc, 0).xyz;
-                //rayColor *= vec3f(hr.uv.x, hr.uv.y, 0);
+            if (hr.m.tex >= 0) {
+                let tc = vec2u(u32(hr.uv.x * 8.0), u32(hr.uv.y * 8.0));
+                rayColor *= textureLoad(textures, tc, hr.m.tex, 0).xyz;
             } else {
                 rayColor *= hr.m.c;
             }
 
             let matRand = randomF(&rngState);
-            if (hr.m.ri > 0) {
+            if (hr.m.ri > 0.01) {
                 let cosTheta = dot(-ray, hr.n);
                 let refractiveRatio = select(hr.m.ri, 1.0 / hr.m.ri, hr.frontFace);
                 let r = refract(ray, hr.n, refractiveRatio);
@@ -222,7 +216,6 @@ fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
     let nc = cross(b - a, p - a);
     hr.h = dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
     if (hr.h) {
-        hr.tex = true;
         let ndn = dot(n, n);
         let beta = dot(n, nb) / ndn;
         let gamma = dot(n, nc) / ndn;
