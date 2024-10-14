@@ -10,6 +10,7 @@ let raytraceTexture;
 let prevTexture;
 let normalsTexture;
 let positionsTexture;
+let finalTexture;
 
 let textureArray;
 let texList;
@@ -23,6 +24,16 @@ let objectsLayout;
 let materialsLayout;
 let denoiseParamsLayout;
 
+let raytraceTextureBindGroup;
+let objectsBindGroup;
+let materialsBindGroup;
+let npTextureBindGroup;
+let denoiseParamsBindGroup;
+let finalTextureBindGroup;
+let denoiseNpBindGroup;
+
+let denoiseParamsBuffer;
+
 const workgroupX = 64;
 
 const triangleSize = 32;
@@ -33,6 +44,7 @@ const materialSize = 32;
 
 const runDenoiser = false;
 const denoisePassCount = 3;
+let stepw = 1.0;
 
 async function loadWGSLShader(f) {
     let response = await fetch("shaders/" + f);
@@ -68,13 +80,17 @@ async function setupGPUDevice(canvas, static=false) {
     return true;
 }
 
+function setupBindGroups(scene) {
+    createRaytraceTextureBindGroup(!scene.camera.realtimeMode);
+    createObjectsBindGroup(scene);
+    createMaterialsBindGroup(scene.materialList);
+    if (runDenoiser) {
+        createDenoiseBindGroups();
+    }
+}
+
 async function renderGPU(scene, static=false) {
     let camera = scene.camera;
-    let materialList = scene.materialList;
-    let meshList = scene.meshList;
-    let sphereList = scene.sphereList;
-
-    let finalTexture = computeContext.getCurrentTexture();
 
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
@@ -101,179 +117,6 @@ async function renderGPU(scene, static=false) {
         ]
     });
 
-    textureArray = device.createTexture({
-        size: [8, 8, texList.length],
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
-    });
-    for (let i = 0; i < texList.length; i++) {
-        device.queue.copyExternalImageToTexture({source: texList[i]}, {texture: textureArray, origin: {z: i}}, [8, 8]);
-    }
-
-    let raytraceTextureBindGroup;
-    if (static) {
-        raytraceTextureBindGroup = device.createBindGroup({
-            layout: raytraceTextureLayout,
-            entries: [
-                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
-                { binding: 0, resource: prevTexture.createView() }
-            ]
-        });
-    } else {
-        raytraceTextureBindGroup = device.createBindGroup({
-            label: "ray trace texture bind group",
-            layout: raytraceTextureLayout,
-            entries: [
-                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() }
-            ]
-        });
-    }
-
-    const npTextureBindGroup = device.createBindGroup({
-        layout: npTextureLayout,
-        entries: [
-            { binding: 0, resource: normalsTexture.createView() },
-            { binding: 1, resource: positionsTexture.createView() }
-        ]
-    });
-
-    const spheresBuffer = device.createBuffer({
-        label: "spheres buffer",
-        size: sphereList.length * sphereSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < sphereList.length; i++) {
-        let s = sphereList[i];
-        device.queue.writeBuffer(spheresBuffer, i * sphereSize, new Float32Array(s.getValues()));
-        device.queue.writeBuffer(spheresBuffer, i * sphereSize + 16, new Uint32Array(s.getM()));
-    }
-
-    let triOffset = 0;
-    let vOffset = 0;
-    let uvOffset = 0;
-
-    const triangleBuffer = device.createBuffer({
-        label: "triangle buffer",
-        size: totalTris * triangleSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < meshList.length; i++) {
-        let m = meshList[i];
-        device.queue.writeBuffer(triangleBuffer, triOffset, m.getTriangles());
-        triOffset += m.tCount * triangleSize;
-    }    
-
-    const trianglePointBuffer = device.createBuffer({
-        label: "triangle point buffer",
-        size: (vertexOffset + 1) * vertexSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < meshList.length; i++) {
-        let m = meshList[i];
-        device.queue.writeBuffer(trianglePointBuffer, vOffset, m.getVerticies());
-        vOffset += m.vCount * vertexSize;
-    }
-
-    const triangleUvBuffer = device.createBuffer({
-        label: "triangle uv buffer",
-        size: (vertexOffset + 1) * uvSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < meshList.length; i++) {
-        let m = meshList[i];
-        device.queue.writeBuffer(triangleUvBuffer, uvOffset, m.getUvs());
-        uvOffset += m.vCount * uvSize;
-    }
-
-    const objectsBindGroup = device.createBindGroup({
-        label: "objects bind group",
-        layout: objectsLayout,
-        entries: [
-            { binding: 0, resource: { buffer: triangleBuffer } },
-            { binding: 1, resource: { buffer: trianglePointBuffer } },
-            { binding: 2, resource: { buffer: triangleUvBuffer } },
-            { binding: 3, resource: { buffer: spheresBuffer } }
-        ]
-    });
-
-    let materials = [];
-    for (let i = 0; i < materialList.length; i++) {
-        materials = materials.concat(materialList[i].getValues());
-    }
-    materials = new Float32Array(materials);
-
-    const materialBuffer = device.createBuffer({
-        label: "materials buffer",
-        size: materials.byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(materialBuffer, 0, materials);
-
-    for(let i = 0; i < materialList.length; i++) {
-        let t = materialList[i].getTex();
-        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 4, t);
-    }
-
-    const materialsBindGroup = device.createBindGroup({
-        label: "materials bind group",
-        layout: materialsLayout,
-        entries: [
-            { binding: 0, resource: { buffer : materialBuffer } },
-            { binding: 1, resource: textureArray.createView() }
-        ]
-    });
-
-    let cphi = 10.0;
-    let nphi = 0.2;
-    let pphi = 10.0;
-    let stepw = 1.0;
-    let params = [
-        1/256, 1/64, 3/128, 1/64, 1/256,
-        1/64 , 1/16, 3/32 , 1/16, 1/64,
-        3/128, 3/32, 9/64 , 3/32, 3/128,
-        1/64 , 1/16, 3/32 , 1/16, 1/64,
-        1/256, 1/64, 3/128, 1/64, 1/256,
-        cphi, nphi, pphi,
-        -2, -2, -1, -2, 0, -2, 1, -2, 2, -2,
-        -2, -1, -1, -1, 0, -1, 1, -1, 2, -1,
-        -2, 0 , -1, 0 , 0,  0,  1, 0,  2, 0,
-        -2, 1 , -1, 1 , 0,  1,  1, 1,  2, 1,
-        -2, 2 , -1, 2 , 0,  2,  1, 2,  2, 2,
-        stepw, 0
-    ];
-    let paramsF = new Float32Array(params);
-
-    const denoiseParamsBuffer = device.createBuffer({
-        label: "denoise params buffer",
-        size: paramsF.byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(denoiseParamsBuffer, 0, paramsF);
-
-    const denoiseParamsBindGroup = device.createBindGroup({
-        label: "denoise params bind group",
-        layout: denoiseParamsLayout,
-        entries: [
-            { binding: 0, resource: { buffer : denoiseParamsBuffer } }
-        ]
-    });
-
-    const textureBindGroup = device.createBindGroup({
-        layout: denoiseTextureLayout,
-        entries: [
-            { binding: 0, resource: finalTexture.createView() },
-            { binding: 1, resource: raytraceTexture.createView() }
-        ]
-    });
-
-    const denoiseNpBindGroup = device.createBindGroup({
-        layout: denoiseNpLayout,
-        entries: [
-            { binding: 0, resource: normalsTexture.createView() },
-            { binding: 1, resource: positionsTexture.createView() }
-        ]
-    });
-
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
 
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
@@ -288,6 +131,7 @@ async function renderGPU(scene, static=false) {
     pass.end();
 
     if (runDenoiser) {
+        stepw = 1.0;
         const npPass = encoder.beginComputePass({ label: "np pass" });
         npPass.setPipeline(npPipeline);
         npPass.setBindGroup(0, uniformBindGroup);
@@ -299,7 +143,7 @@ async function renderGPU(scene, static=false) {
         for (let i = 0; i < denoisePassCount; i++) {
             const dpass = encoder.beginComputePass({ label: "denoise pass "});
             dpass.setPipeline(denoisePipeline);
-            dpass.setBindGroup(0, textureBindGroup);
+            dpass.setBindGroup(0, finalTextureBindGroup);
             dpass.setBindGroup(1, denoiseNpBindGroup);
             dpass.setBindGroup(2, denoiseParamsBindGroup);
             dpass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
@@ -390,6 +234,7 @@ function createBindGroupLayouts(static) {
     });
 
     denoiseNpLayout = device.createBindGroupLayout({
+        label: "np bind group layout",
         entries: [
             {
                 binding: 0,
@@ -404,6 +249,7 @@ function createBindGroupLayouts(static) {
     });
 
     objectsLayout = device.createBindGroupLayout({
+        label: "objects bind group layout",
         entries: [
             {
                 binding: 0,
@@ -441,6 +287,7 @@ function createBindGroupLayouts(static) {
     });
 
     denoiseParamsLayout = device.createBindGroupLayout({
+        label: "denoise params layout",
         entries: [
             {
                 binding: 0,
@@ -471,6 +318,7 @@ async function createPipelines(static) {
     });
 
     const raytracePipelineLayout = device.createPipelineLayout({
+        label: "raytrace pipeline layout",
         bindGroupLayouts: [
             uniformLayout,
             raytraceTextureLayout,
@@ -488,6 +336,7 @@ async function createPipelines(static) {
     });
 
     const npPipelineLayout = device.createPipelineLayout({
+        label: "np pipeline layout",
         bindGroupLayouts: [
             uniformLayout,
             npTextureLayout,
@@ -504,6 +353,7 @@ async function createPipelines(static) {
     });
 
     const denoisePipelineLayout = device.createPipelineLayout({
+        label: "denoise pipeline layout",
         bindGroupLayouts: [
             denoiseTextureLayout,
             denoiseNpLayout,
@@ -545,5 +395,190 @@ function createRenderTextures(static) {
         size: {width: canvas.width, height: canvas.height},
         format: "rgba16float",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
+    });
+
+    finalTexture = computeContext.getCurrentTexture();
+}
+
+function createRaytraceTextureBindGroup(static) {
+    if (static) {
+        raytraceTextureBindGroup = device.createBindGroup({
+            label: "ray trace texture bind group",
+            layout: raytraceTextureLayout,
+            entries: [
+                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
+                { binding: 0, resource: prevTexture.createView() }
+            ]
+        });
+    } else {
+        raytraceTextureBindGroup = device.createBindGroup({
+            label: "ray trace texture bind group",
+            layout: raytraceTextureLayout,
+            entries: [
+                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() }
+            ]
+        });
+    }
+}
+
+function createObjectsBindGroup(scene) {
+    let meshList = scene.meshList;
+    let sphereList = scene.sphereList;
+
+    const spheresBuffer = device.createBuffer({
+        label: "spheres buffer",
+        size: sphereList.length * sphereSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let i = 0; i < sphereList.length; i++) {
+        let s = sphereList[i];
+        device.queue.writeBuffer(spheresBuffer, i * sphereSize, new Float32Array(s.getValues()));
+        device.queue.writeBuffer(spheresBuffer, i * sphereSize + 16, new Uint32Array(s.getM()));
+    }
+
+    let triOffset = 0;
+    let vOffset = 0;
+    let uvOffset = 0;
+
+    const triangleBuffer = device.createBuffer({
+        label: "triangle buffer",
+        size: totalTris * triangleSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let i = 0; i < meshList.length; i++) {
+        let m = meshList[i];
+        device.queue.writeBuffer(triangleBuffer, triOffset, m.getTriangles());
+        triOffset += m.tCount * triangleSize;
+    }    
+
+    const trianglePointBuffer = device.createBuffer({
+        label: "triangle point buffer",
+        size: (vertexOffset + 1) * vertexSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let i = 0; i < meshList.length; i++) {
+        let m = meshList[i];
+        device.queue.writeBuffer(trianglePointBuffer, vOffset, m.getVerticies());
+        vOffset += m.vCount * vertexSize;
+    }
+
+    const triangleUvBuffer = device.createBuffer({
+        label: "triangle uv buffer",
+        size: (vertexOffset + 1) * uvSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let i = 0; i < meshList.length; i++) {
+        let m = meshList[i];
+        device.queue.writeBuffer(triangleUvBuffer, uvOffset, m.getUvs());
+        uvOffset += m.vCount * uvSize;
+    }
+
+    objectsBindGroup = device.createBindGroup({
+        label: "objects bind group",
+        layout: objectsLayout,
+        entries: [
+            { binding: 0, resource: { buffer: triangleBuffer } },
+            { binding: 1, resource: { buffer: trianglePointBuffer } },
+            { binding: 2, resource: { buffer: triangleUvBuffer } },
+            { binding: 3, resource: { buffer: spheresBuffer } }
+        ]
+    });
+}
+
+function createMaterialsBindGroup(materialList) {
+    textureArray = device.createTexture({
+        size: [8, 8, texList.length],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
+    });
+    for (let i = 0; i < texList.length; i++) {
+        device.queue.copyExternalImageToTexture({source: texList[i]}, {texture: textureArray, origin: {z: i}}, [8, 8]);
+    }
+
+    let materials = [];
+    for (let i = 0; i < materialList.length; i++) {
+        materials = materials.concat(materialList[i].getValues());
+    }
+    materials = new Float32Array(materials);
+
+    const materialBuffer = device.createBuffer({
+        label: "materials buffer",
+        size: materials.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(materialBuffer, 0, materials);
+
+    for(let i = 0; i < materialList.length; i++) {
+        let t = materialList[i].getTex();
+        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 4, t);
+    }
+
+    materialsBindGroup = device.createBindGroup({
+        label: "materials bind group",
+        layout: materialsLayout,
+        entries: [
+            { binding: 0, resource: { buffer : materialBuffer } },
+            { binding: 1, resource: textureArray.createView() }
+        ]
+    });
+}
+
+function createDenoiseBindGroups() {
+    npTextureBindGroup = device.createBindGroup({
+        layout: npTextureLayout,
+        entries: [
+            { binding: 0, resource: normalsTexture.createView() },
+            { binding: 1, resource: positionsTexture.createView() }
+        ]
+    });
+
+    let cphi = 10.0;
+    let nphi = 0.2;
+    let pphi = 10.0;
+    let params = [
+        1/256, 1/64, 3/128, 1/64, 1/256,
+        1/64 , 1/16, 3/32 , 1/16, 1/64,
+        3/128, 3/32, 9/64 , 3/32, 3/128,
+        1/64 , 1/16, 3/32 , 1/16, 1/64,
+        1/256, 1/64, 3/128, 1/64, 1/256,
+        cphi, nphi, pphi,
+        -2, -2, -1, -2, 0, -2, 1, -2, 2, -2,
+        -2, -1, -1, -1, 0, -1, 1, -1, 2, -1,
+        -2, 0 , -1, 0 , 0,  0,  1, 0,  2, 0,
+        -2, 1 , -1, 1 , 0,  1,  1, 1,  2, 1,
+        -2, 2 , -1, 2 , 0,  2,  1, 2,  2, 2,
+        stepw, 0
+    ];
+    let paramsF = new Float32Array(params);
+
+    denoiseParamsBuffer = device.createBuffer({
+        label: "denoise params buffer",
+        size: paramsF.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(denoiseParamsBuffer, 0, paramsF);
+
+    denoiseParamsBindGroup = device.createBindGroup({
+        label: "denoise params bind group",
+        layout: denoiseParamsLayout,
+        entries: [
+            { binding: 0, resource: { buffer : denoiseParamsBuffer } }
+        ]
+    });
+
+    finalTextureBindGroup = device.createBindGroup({
+        layout: denoiseTextureLayout,
+        entries: [
+            { binding: 0, resource: finalTexture.createView() },
+            { binding: 1, resource: raytraceTexture.createView() }
+        ]
+    });
+
+    denoiseNpBindGroup = device.createBindGroup({
+        layout: denoiseNpLayout,
+        entries: [
+            { binding: 0, resource: normalsTexture.createView() },
+            { binding: 1, resource: positionsTexture.createView() }
+        ]
     });
 }
