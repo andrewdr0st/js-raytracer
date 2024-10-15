@@ -19,6 +19,12 @@ class TestScene extends Scene {
         blueCube.translate([1, 2.25, 6]);
         this.meshList.push(blueCube);
 
+        let cylinder = new Mesh();
+        cylinder.setMaterial(this.materialList[5]);
+        await cylinder.parseObjFile("cylinder.obj");
+        cylinder.translate([10, 1.0, -8]);
+        this.meshList.push(cylinder);
+
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);
 
@@ -30,10 +36,11 @@ class TestScene extends Scene {
     }
 
     setupMaterials() {
-        this.materialList.push(new Material(0.2, 0.4, 0.25, 0, 0, 0, 0, 2));
+        this.materialList.push(new Material(0.2, 0.4, 0.25, 0));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 1.0));
         this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1, 0, 1));
         this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 0));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
+        this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 1));
     }
 }

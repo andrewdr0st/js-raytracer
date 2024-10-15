@@ -464,13 +464,13 @@ function createObjectsBindGroup(scene) {
 
     const triangleUvBuffer = device.createBuffer({
         label: "triangle uv buffer",
-        size: (vertexOffset + 1) * uvSize,
+        size: (tcOffset + 1) * uvSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
     for (let i = 0; i < meshList.length; i++) {
         let m = meshList[i];
         device.queue.writeBuffer(triangleUvBuffer, uvOffset, m.getUvs());
-        uvOffset += m.vCount * uvSize;
+        uvOffset += m.tcCount * uvSize;
     }
 
     objectsBindGroup = device.createBindGroup({
