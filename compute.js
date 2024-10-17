@@ -36,9 +36,10 @@ let denoiseParamsBuffer;
 
 const workgroupX = 64;
 
-const triangleSize = 32;
+const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
+const normalsSize = 16;
 const sphereSize = 32;
 const materialSize = 32;
 
@@ -267,6 +268,10 @@ function createBindGroupLayouts(static) {
                 binding: 3,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
+            }, {
+                binding: 4,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
             }
         ]
     });
@@ -439,6 +444,7 @@ function createObjectsBindGroup(scene) {
     let triOffset = 0;
     let vOffset = 0;
     let uvOffset = 0;
+    let nOffset = 0;
 
     const triangleBuffer = device.createBuffer({
         label: "triangle buffer",
@@ -473,6 +479,17 @@ function createObjectsBindGroup(scene) {
         uvOffset += m.tcCount * uvSize;
     }
 
+    const triangleNormalsBuffer = device.createBuffer({
+        label: "triangle normals buffer",
+        size: (vnormalOffset + 1) * normalsSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let i = 0; i < meshList.length; i++) {
+        let m = meshList[i];
+        device.queue.writeBuffer(triangleNormalsBuffer, nOffset, m.getNormals());
+        nOffset += m.nCount * normalsSize;
+    }
+
     objectsBindGroup = device.createBindGroup({
         label: "objects bind group",
         layout: objectsLayout,
@@ -480,7 +497,8 @@ function createObjectsBindGroup(scene) {
             { binding: 0, resource: { buffer: triangleBuffer } },
             { binding: 1, resource: { buffer: trianglePointBuffer } },
             { binding: 2, resource: { buffer: triangleUvBuffer } },
-            { binding: 3, resource: { buffer: spheresBuffer } }
+            { binding: 3, resource: { buffer: triangleNormalsBuffer } },
+            { binding: 4, resource: { buffer: spheresBuffer } }
         ]
     });
 }

@@ -2,8 +2,8 @@ class TestScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
         this.camera.backgroundColor = [0.5, 0.5, 0.6];
-        this.camera.bounceCount = 12;
-        this.camera.raysPerPixel = 4;
+        this.camera.bounceCount = 8;
+        this.camera.raysPerPixel = 2;
     }
 
     async setupObjects() {

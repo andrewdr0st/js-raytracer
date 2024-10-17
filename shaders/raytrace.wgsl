@@ -27,7 +27,9 @@ struct sphere {
 struct triangle {
     points: vec3u,
     m: u32,
-    uvs: vec3u
+    uvs: vec3u,
+    bruh: u32,
+    norms: vec3u
 };
 
 struct hitRec {
@@ -48,7 +50,8 @@ const PI = 3.14159265359;
 @group(2) @binding(0) var<storage, read> triangles: array<triangle>;
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
 @group(2) @binding(2) var<storage, read> triUvs: array<vec2f>;
-@group(2) @binding(3) var<storage, read> spheres: array<sphere>;
+@group(2) @binding(3) var<storage, read> triNorms: array<vec3f>;
+@group(2) @binding(4) var<storage, read> spheres: array<sphere>;
 @group(3) @binding(0) var<storage, read> materials: array<material>;
 @group(3) @binding(1) var textures: texture_2d_array<f32>;
 
@@ -136,8 +139,8 @@ const PI = 3.14159265359;
             incomingLight += emitLight * rayColor;
             if (hr.m.tex >= 0) {
                 let tc = vec2u(u32(hr.uv.x * 8.0), u32(hr.uv.y * 8.0));
-                //rayColor *= textureLoad(textures, tc, hr.m.tex, 0).xyz;
-                rayColor *= vec3f(hr.uv.x, 0, hr.uv.y);
+                rayColor *= textureLoad(textures, tc, hr.m.tex, 0).xyz;
+                //rayColor *= vec3f(hr.uv.x, 0, hr.uv.y);
             } else {
                 rayColor *= hr.m.c;
             }
@@ -248,7 +251,7 @@ fn randomF(state: ptr<function, u32>) -> f32 {
 }
 
 fn randomDir(state: ptr<function, u32>) -> vec3f {
-    let theta = randomF(state) * 3.14159;
+    let theta = randomF(state) * PI;
     let z = randomF(state) * 2 - 1.0;
     let x = sqrt(1 - z * z) * cos(theta);
     let y = sqrt(1 - z * z) * sin(theta);

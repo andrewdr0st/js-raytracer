@@ -16,6 +16,6 @@ class Triangle {
     }
 
     getValues() {
-        return [this.v1, this.v2, this.v3, this.m, this.vt1, this.vt2, this.vt3, 0];
+        return [this.v1, this.v2, this.v3, this.m, this.vt1, this.vt2, this.vt3, 0, this.vn1, this.vn2, this.vn3, 0];
     }
 }

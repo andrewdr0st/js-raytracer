@@ -92,6 +92,10 @@ class Mesh {
         return new Float32Array(this.textureCoords);
     }
 
+    getNormals() {
+        return new Float32Array(this.normals);
+    }
+
     translate(t) {
         for (let i = 0; i < this.verticies.length; i += 4) {
             this.verticies[i] += t[0];
