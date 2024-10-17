@@ -487,6 +487,7 @@ function createObjectsBindGroup(scene) {
     for (let i = 0; i < meshList.length; i++) {
         let m = meshList[i];
         device.queue.writeBuffer(triangleNormalsBuffer, nOffset, m.getNormals());
+        console.log(m.getNormals());
         nOffset += m.nCount * normalsSize;
     }
 

@@ -12,10 +12,12 @@ class Triangle {
         this.vn2 = vn2;
         this.vn3 = vn3;
 
+        this.useNorms = vn1 == 0 && vn2 == 0 && vn3 == 0 ? 0 : 1;
+
         this.m = m;
     }
 
     getValues() {
-        return [this.v1, this.v2, this.v3, this.m, this.vt1, this.vt2, this.vt3, 0, this.vn1, this.vn2, this.vn3, 0];
+        return [this.v1, this.v2, this.v3, this.m, this.vt1, this.vt2, this.vt3, 0, this.vn1, this.vn2, this.vn3, this.useNorms];
     }
 }

@@ -28,8 +28,8 @@ struct triangle {
     points: vec3u,
     m: u32,
     uvs: vec3u,
-    bruh: u32,
-    norms: vec3u
+    norms: vec3u,
+    useNorms: u32
 };
 
 struct hitRec {
@@ -139,8 +139,9 @@ const PI = 3.14159265359;
             incomingLight += emitLight * rayColor;
             if (hr.m.tex >= 0) {
                 let tc = vec2u(u32(hr.uv.x * 8.0), u32(hr.uv.y * 8.0));
-                rayColor *= textureLoad(textures, tc, hr.m.tex, 0).xyz;
+                //rayColor *= textureLoad(textures, tc, hr.m.tex, 0).xyz;
                 //rayColor *= vec3f(hr.uv.x, 0, hr.uv.y);
+                rayColor *= hr.n;
             } else {
                 rayColor *= hr.m.c;
             }
@@ -232,6 +233,12 @@ fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
         let tb = triUvs[tri.uvs.y];
         let tc = triUvs[tri.uvs.z];
         hr.uv = ta + beta * (tb - ta) + gamma * (tc - ta);
+        if (tri.useNorms > 0) {
+            let norma = triNorms[tri.norms.x];
+            let normb = triNorms[tri.norms.y];
+            let normc = triNorms[tri.norms.z];
+            hr.n = norma + beta * (normb - norma) + gamma * (normc - norma);
+        }
     }
     return hr;
 }

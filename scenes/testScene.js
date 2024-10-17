@@ -2,7 +2,7 @@ class TestScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
         this.camera.backgroundColor = [0.5, 0.5, 0.6];
-        this.camera.bounceCount = 8;
+        this.camera.bounceCount = 2;
         this.camera.raysPerPixel = 2;
     }
 
@@ -24,9 +24,10 @@ class TestScene extends Scene {
         await cylinder.parseObjFile("cylinder.obj");
         cylinder.translate([10, 1.0, -8]);
         this.meshList.push(cylinder);
+        console.log(cylinder);
 
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
-        this.sphereList.push(sun);
+        //this.sphereList.push(sun);
 
         let metalBall = new Sphere(-5, 2, 0, 2, this.materialList[2]);
         this.sphereList.push(metalBall);

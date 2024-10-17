@@ -52,6 +52,7 @@ struct parameters {
     }
     
     //textureStore(otex, id.xy, cval);
+    //textureStore(otex, id.xy, nval);
     textureStore(otex, id.xy, sum / cumulative);
 }
 
