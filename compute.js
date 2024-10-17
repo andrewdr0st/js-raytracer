@@ -345,7 +345,7 @@ async function createPipelines(static) {
         bindGroupLayouts: [
             uniformLayout,
             npTextureLayout,
-            objectsLayout,
+            objectsLayout
         ]
     });
 

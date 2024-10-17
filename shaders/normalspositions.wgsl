@@ -17,7 +17,10 @@ struct sphere {
 
 struct triangle {
     points: vec3u,
-    m: u32
+    m: u32,
+    uvs: vec3u,
+    norms: vec3u,
+    useNorms: u32
 };
 
 struct hitRec {
@@ -33,7 +36,9 @@ struct hitRec {
 @group(1) @binding(1) var ptex: texture_storage_2d<rgba16float, write>;
 @group(2) @binding(0) var<storage, read> triangles: array<triangle>;
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
-@group(2) @binding(2) var<storage, read> spheres: array<sphere>;
+@group(2) @binding(2) var<storage, read> triUvs: array<vec2f>;
+@group(2) @binding(3) var<storage, read> triNorms: array<vec3f>;
+@group(2) @binding(4) var<storage, read> spheres: array<sphere>;
 
 @compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
     if (id.x > textureDimensions(ntex).x) {
@@ -74,10 +79,7 @@ struct hitRec {
 
     for (var i: u32 = 0; i < triCount; i++) {
         let tri = triangles[i];
-        let a = triPoints[tri.points.x];
-        let b = triPoints[tri.points.y];
-        let c = triPoints[tri.points.z];
-        var thr = hitTriangle(a, b, c, orig, ray, tMax);
+        var thr = hitTriangle(tri, orig, ray, tMax);
 
         if (thr.h && thr.t > tMin && thr.t < tMax) {
             tMax = thr.t;
@@ -122,8 +124,11 @@ fn hitPlane(n: vec3f, p: vec3f, orig: vec3f, dir: vec3f) -> f32 {
     return numerator / denominator;
 }
 
-fn hitTriangle(a: vec3f, b: vec3f, c: vec3f, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
+fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
     var hr: hitRec;
+    let a = triPoints[tri.points.x];
+    let b = triPoints[tri.points.y];
+    let c = triPoints[tri.points.z];
     hr.h = false;
     let n = normalize(cross(b - a, c - a));
     hr.n = n;
@@ -137,5 +142,14 @@ fn hitTriangle(a: vec3f, b: vec3f, c: vec3f, orig: vec3f, dir: vec3f, tMax: f32)
     let nb = cross(a - c, p - c);
     let nc = cross(b - a, p - a);
     hr.h = dot(n, na) >= 0 && dot(n, nb) >= 0 && dot(n, nc) >= 0;
+    if (hr.h && tri.useNorms > 0) {
+        let ndn = dot(n, n);
+        let beta = dot(n, nb) / ndn;
+        let gamma = dot(n, nc) / ndn;
+        let norma = triNorms[tri.norms.x];
+        let normb = triNorms[tri.norms.y];
+        let normc = triNorms[tri.norms.z];
+        hr.n = norma + beta * (normb - norma) + gamma * (normc - norma);
+    }
     return hr;
 }
