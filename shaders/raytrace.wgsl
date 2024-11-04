@@ -32,6 +32,14 @@ struct triangle {
     useNorms: u32
 };
 
+struct object {
+    bbox1: vec3f,
+    tstart: u32,
+    bbox2: vec3f,
+    tend: u32,
+    tmat: mat4x4f
+};
+
 struct hitRec {
     p: vec3f,
     t: f32,
@@ -51,7 +59,8 @@ const PI = 3.14159265359;
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
 @group(2) @binding(2) var<storage, read> triUvs: array<vec2f>;
 @group(2) @binding(3) var<storage, read> triNorms: array<vec3f>;
-@group(2) @binding(4) var<storage, read> spheres: array<sphere>;
+@group(2) @binding(4) var<storage, read> objects: array<object>;
+@group(2) @binding(5) var<storage, read> spheres: array<sphere>;
 @group(3) @binding(0) var<storage, read> materials: array<material>;
 @group(3) @binding(1) var textures: texture_2d_array<f32>;
 

@@ -58,6 +58,15 @@ function vsub(u, v) {
     return [u[0] - v[0], u[1] - v[1], u[2] - v[2]];
 }
 
+function vmin(u, v) {
+    return [Math.min(u[0], v[0]), Math.min(u[1], v[1]), Math.min(u[2], v[2])];
+}
+
+function vmax(u, v) {
+    return [Math.max(u[0], v[0]), Math.max(u[1], v[1]), Math.max(u[2], v[2])];
+}
+
+
 
 function hsv2rgb(h, s, v) {
     let c = v * s;

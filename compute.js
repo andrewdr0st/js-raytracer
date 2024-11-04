@@ -40,6 +40,7 @@ const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
 const normalsSize = 16;
+const objectSize = 96;
 const sphereSize = 32;
 const materialSize = 32;
 
@@ -272,6 +273,10 @@ function createBindGroupLayouts(static) {
                 binding: 4,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
+            }, {
+                binding: 5,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
             }
         ]
     });
@@ -429,6 +434,8 @@ function createRaytraceTextureBindGroup(static) {
 function createObjectsBindGroup(scene) {
     let meshList = scene.meshList;
     let sphereList = scene.sphereList;
+    let objectList = scene.objectList;
+    let objectCount = scene.objectCount;
 
     const spheresBuffer = device.createBuffer({
         label: "spheres buffer",
@@ -445,6 +452,7 @@ function createObjectsBindGroup(scene) {
     let vOffset = 0;
     let uvOffset = 0;
     let nOffset = 0;
+    let oOffset = 0;
 
     const triangleBuffer = device.createBuffer({
         label: "triangle buffer",
@@ -487,8 +495,21 @@ function createObjectsBindGroup(scene) {
     for (let i = 0; i < meshList.length; i++) {
         let m = meshList[i];
         device.queue.writeBuffer(triangleNormalsBuffer, nOffset, m.getNormals());
-        console.log(m.getNormals());
         nOffset += m.nCount * normalsSize;
+    }
+
+    const objectsBuffer = device.createBuffer({
+        label: "objects buffer",
+        size: objectCount * objectSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let i = 0; i < objectCount; i++) {
+        let o = objectList[i];
+        device.queue.writeBuffer(objectsBuffer, oOffset, o.getBbox1());
+        device.queue.writeBuffer(objectsBuffer, oOffset + 12, new Int32Array(o.mesh.triStart));
+        device.queue.writeBuffer(objectsBuffer, oOffset + 16, o.getBbox2());
+        device.queue.writeBuffer(objectsBuffer, oOffset + 28, new Int32Array(o.mesh.triEnd));
+        device.queue.writeBuffer(objectsBuffer, oOffset + 32, o.getTransformMatrix());
     }
 
     objectsBindGroup = device.createBindGroup({
@@ -499,7 +520,8 @@ function createObjectsBindGroup(scene) {
             { binding: 1, resource: { buffer: trianglePointBuffer } },
             { binding: 2, resource: { buffer: triangleUvBuffer } },
             { binding: 3, resource: { buffer: triangleNormalsBuffer } },
-            { binding: 4, resource: { buffer: spheresBuffer } }
+            { binding: 4, resource: { buffer: objectsBuffer } },
+            { binding: 5, resource: { buffer: spheresBuffer } }
         ]
     });
 }

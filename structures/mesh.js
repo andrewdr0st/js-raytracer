@@ -14,6 +14,9 @@ class Mesh {
         this.normals = [];
         this.nCount = 0;
 
+        this.triStart = 0;
+        this.triEnd = 0;
+
         this.material;
     }
 
@@ -69,7 +72,10 @@ class Mesh {
         vertexOffset += this.vCount;
         tcOffset += this.tcCount;
         vnormalOffset += this.nCount;
+
+        this.triStart = totalTris;
         totalTris += this.tCount;
+        this.triEnd = totalTris - 1;
     }
 
     setMaterial(m) {
