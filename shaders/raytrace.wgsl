@@ -34,10 +34,10 @@ struct triangle {
 
 struct object {
     bbox1: vec3f,
-    tstart: u32,
+    tStart: u32,
     bbox2: vec3f,
-    tend: u32,
-    tmat: mat4x4f
+    tEnd: u32,
+    tMat: mat4x4f
 };
 
 struct hitRec {
@@ -76,6 +76,7 @@ const PI = 3.14159265359;
 
     let sphereCount = arrayLength(&spheres);
     let triCount = arrayLength(&triangles);
+    let objCount = arrayLength(&objects);
 
     let bounceCount: u32 = camera.bounceCount;
     let rayCount: u32 = camera.raysPerPixel;
@@ -125,22 +126,29 @@ const PI = 3.14159265359;
                 }
             }
 
-            for (var i: u32 = 0; i < triCount; i++) {
-                let tri = triangles[i];
-                var thr = hitTriangle(tri, orig, ray, tMax);
+            for (var i: u32 = 0; i < objCount; i++) {
+                let obj = objects[i];
+                var ohr = hitObject(obj, orig, ray);
 
-                if (thr.h && thr.t > tMin && thr.t < tMax) {
-                    tMax = thr.t;
-                    hr.t = thr.t;
-                    hr.n = thr.n;
-                    hr.frontFace = dot(ray, hr.n) < 0;
-                    if (!hr.frontFace) {
-                        hr.n = -hr.n;
+                if (ohr.h) {
+                    for (var j: u32 = obj.tStart; j <= obj.tEnd; j++) {
+                        let tri = triangles[j];
+                        var thr = hitTriangle(tri, orig, ray, tMax);
+
+                        if (thr.h && thr.t > tMin && thr.t < tMax) {
+                            tMax = thr.t;
+                            hr.t = thr.t;
+                            hr.n = thr.n;
+                            hr.frontFace = dot(ray, hr.n) < 0;
+                            if (!hr.frontFace) {
+                                hr.n = -hr.n;
+                            }
+                            hr.h = thr.h;
+                            hr.p = ray * hr.t + orig;
+                            hr.m = materials[tri.m];
+                            hr.uv = thr.uv;
+                        }
                     }
-                    hr.h = thr.h;
-                    hr.p = ray * hr.t + orig;
-                    hr.m = materials[tri.m];
-                    hr.uv = thr.uv;
                 }
             }
             
@@ -249,6 +257,28 @@ fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
             hr.n = norma + beta * (normb - norma) + gamma * (normc - norma);
         }
     }
+    return hr;
+}
+
+fn hitObject(obj: object, orig: vec3f, dir: vec3f) -> hitRec {
+    var hr: hitRec;
+    let x0 = (obj.bbox1.x - orig.x) / dir.x;
+    let x1 = (obj.bbox2.x - orig.x) / dir.x;
+    let minx = min(x0, x1);
+    let maxx = max(x0, x1);
+    let y0 = (obj.bbox1.y - orig.y) / dir.y;
+    let y1 = (obj.bbox2.y - orig.y) / dir.y;
+    let miny = min(y0, y1);
+    let maxy = max(y0, y1);
+    let z0 = (obj.bbox1.z - orig.z) / dir.z;
+    let z1 = (obj.bbox2.z - orig.z) / dir.z;
+    let minz = min(z0, z1);
+    let maxz = max(z0, z1);
+    let tenter = max(max(minx, miny), minz);
+    let texit = min(min(maxx, maxy), maxz);
+
+    hr.h = tenter <= texit && texit >= 0;
+    hr.p = orig + tenter * dir;
     return hr;
 }
 

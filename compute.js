@@ -506,10 +506,11 @@ function createObjectsBindGroup(scene) {
     for (let i = 0; i < objectCount; i++) {
         let o = objectList[i];
         device.queue.writeBuffer(objectsBuffer, oOffset, o.getBbox1());
-        device.queue.writeBuffer(objectsBuffer, oOffset + 12, new Int32Array(o.mesh.triStart));
+        device.queue.writeBuffer(objectsBuffer, oOffset + 12, new Int32Array([o.mesh.triStart]));
         device.queue.writeBuffer(objectsBuffer, oOffset + 16, o.getBbox2());
-        device.queue.writeBuffer(objectsBuffer, oOffset + 28, new Int32Array(o.mesh.triEnd));
+        device.queue.writeBuffer(objectsBuffer, oOffset + 28, new Int32Array([o.mesh.triEnd]));
         device.queue.writeBuffer(objectsBuffer, oOffset + 32, o.getTransformMatrix());
+        oOffset += objectSize;
     }
 
     objectsBindGroup = device.createBindGroup({

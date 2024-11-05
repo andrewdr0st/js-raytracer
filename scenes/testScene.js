@@ -3,7 +3,7 @@ class TestScene extends Scene {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
         this.camera.backgroundColor = [0.2, 0.2, 0.25];
         this.camera.bounceCount = 8;
-        this.camera.raysPerPixel = 12;
+        this.camera.raysPerPixel = 4;
     }
 
     async loadMeshes() {
@@ -24,7 +24,6 @@ class TestScene extends Scene {
     }
 
     setupObjects() {
-        
         this.meshList[0].scale([20, 1, 20]);
         this.addObject(this.meshList[0]);
 

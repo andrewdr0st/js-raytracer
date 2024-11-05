@@ -6,6 +6,7 @@ class SceneObject {
         this.transformMatrix = transformMatrix;
         this.bbox1 = [0, 0, 0];
         this.bbox2 = [0, 0, 0];
+        this.calculateBbox();
     }
 
     calculateBbox() {
@@ -15,7 +16,7 @@ class SceneObject {
             let j = i * 4;
             let vec = [v[j], v[j + 1], v[j + 2]];
             this.bbox1 = vmin(this.bbox1, vec);
-            this.bbox2 = vmin(this.bbox2, vec);
+            this.bbox2 = vmax(this.bbox2, vec);
         }
         this.bbox1 = vsub(this.bbox1, epsilonV);
         this.bbox2 = vadd(this.bbox2, epsilonV);
