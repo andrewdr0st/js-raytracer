@@ -64,8 +64,8 @@ const PI = 3.14159265359;
 @group(3) @binding(0) var<storage, read> materials: array<material>;
 @group(3) @binding(1) var textures: texture_2d_array<f32>;
 
-@compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
-    if (id.x > textureDimensions(tex).x) {
+@compute @workgroup_size(8, 8, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
+    if (id.x > textureDimensions(tex).x || id.y > textureDimensions(tex).y) {
         return;
     }
     

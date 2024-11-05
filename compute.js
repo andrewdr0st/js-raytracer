@@ -34,8 +34,6 @@ let denoiseNpBindGroup;
 
 let denoiseParamsBuffer;
 
-const workgroupX = 64;
-
 const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
@@ -128,7 +126,7 @@ async function renderGPU(scene, static=false) {
     pass.setBindGroup(1, raytraceTextureBindGroup);
     pass.setBindGroup(2, objectsBindGroup);
     pass.setBindGroup(3, materialsBindGroup);
-    pass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+    pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
 
     pass.end();
 
@@ -139,7 +137,7 @@ async function renderGPU(scene, static=false) {
         npPass.setBindGroup(0, uniformBindGroup);
         npPass.setBindGroup(1, npTextureBindGroup);
         npPass.setBindGroup(2, objectsBindGroup);
-        npPass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+        npPass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
         npPass.end();
 
         for (let i = 0; i < denoisePassCount; i++) {
@@ -148,7 +146,7 @@ async function renderGPU(scene, static=false) {
             dpass.setBindGroup(0, finalTextureBindGroup);
             dpass.setBindGroup(1, denoiseNpBindGroup);
             dpass.setBindGroup(2, denoiseParamsBindGroup);
-            dpass.dispatchWorkgroups(Math.ceil(camera.imgW / workgroupX), camera.imgH);
+            dpass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
             dpass.end();
 
             if (i + 1 < denoisePassCount) {
