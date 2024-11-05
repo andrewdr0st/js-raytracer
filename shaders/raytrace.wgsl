@@ -37,7 +37,8 @@ struct object {
     tStart: u32,
     bbox2: vec3f,
     tEnd: u32,
-    tMat: mat4x4f
+    tMat: mat4x4f,
+    tMatInv: mat4x4f
 };
 
 struct hitRec {
@@ -131,20 +132,23 @@ const PI = 3.14159265359;
                 var ohr = hitObject(obj, orig, ray);
 
                 if (ohr.h) {
+                    let newO = (obj.tMatInv * vec4f(orig, 1)).xyz;
+                    let newR = ray * vec3f(obj.tMatInv[0][0], obj.tMatInv[1][1], obj.tMatInv[2][2]);
                     for (var j: u32 = obj.tStart; j <= obj.tEnd; j++) {
                         let tri = triangles[j];
-                        var thr = hitTriangle(tri, orig, ray, tMax);
+                        var thr = hitTriangle(tri, newO, newR, tMax);
 
                         if (thr.h && thr.t > tMin && thr.t < tMax) {
                             tMax = thr.t;
                             hr.t = thr.t;
                             hr.n = thr.n;
-                            hr.frontFace = dot(ray, hr.n) < 0;
+                            hr.frontFace = dot(newR, hr.n) < 0;
                             if (!hr.frontFace) {
                                 hr.n = -hr.n;
                             }
                             hr.h = thr.h;
-                            hr.p = ray * hr.t + orig;
+                            hr.p = newR * hr.t + newO;
+                            hr.p = (obj.tMat * vec4f(hr.p, 1)).xyz;
                             hr.m = materials[tri.m];
                             hr.uv = thr.uv;
                         }

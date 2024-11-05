@@ -24,14 +24,14 @@ class TestScene extends Scene {
     }
 
     setupObjects() {
-        this.meshList[0].scale([20, 1, 20]);
         this.addObject(this.meshList[0]);
+        this.objectList[0].scale(20, 1, 20);
 
-        this.meshList[1].translate([1, 2.25, 6]);
         this.addObject(this.meshList[1]);
+        this.objectList[1].translate(1, 2.25, 6);
 
-        this.meshList[2].translate([10, 1.0, -8]);
         this.addObject(this.meshList[2]);
+        this.objectList[2].translate(10, 1, -8);
 
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);

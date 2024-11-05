@@ -4,6 +4,7 @@ let device;
 let raytracePipeline;
 let npPipeline;
 let denoisePipeline;
+let transformPipeline;
 
 let computeContext;
 let raytraceTexture;
@@ -23,6 +24,7 @@ let denoiseNpLayout;
 let objectsLayout;
 let materialsLayout;
 let denoiseParamsLayout;
+let transformLayout;
 
 let raytraceTextureBindGroup;
 let objectsBindGroup;
@@ -31,6 +33,7 @@ let npTextureBindGroup;
 let denoiseParamsBindGroup;
 let finalTextureBindGroup;
 let denoiseNpBindGroup;
+let transformBindGroup;
 
 let denoiseParamsBuffer;
 
@@ -38,7 +41,8 @@ const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
 const normalsSize = 16;
-const objectSize = 96;
+const objectSize = 160;
+const objectInfoSize = 48;
 const sphereSize = 32;
 const materialSize = 32;
 
@@ -165,6 +169,21 @@ async function renderGPU(scene, static=false) {
     device.queue.submit([commandBuffer]);
 
     return true;
+}
+
+async function calculateTransforms() {
+    const encoder = device.createCommandEncoder({ label: "transform encoder" });
+
+    const pass = encoder.beginComputePass({ label: "raytrace pass" });
+
+    pass.setPipeline(transformPipeline);
+    pass.setBindGroup(0, transformBindGroup);
+    pass.dispatchWorkgroups(3);
+
+    pass.end();
+
+    const commandBuffer = encoder.finish();
+    device.queue.submit([commandBuffer]);
 }
 
 
@@ -304,6 +323,29 @@ function createBindGroupLayouts(static) {
             }
         ]
     });
+
+    transformLayout = device.createBindGroupLayout({
+        label: "transform bind group layout",
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {
+                binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "storage" }
+            }, {
+                binding: 3,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }
+        ]
+    });
 }
 
 async function createPipelines(static) {
@@ -324,6 +366,12 @@ async function createPipelines(static) {
         label: "denoise module",
         code: denoiseCode
     });
+
+    let transformCode = await loadWGSLShader("transform.wgsl");
+    const transformModule = device.createShaderModule({
+        label: "transform module",
+        code: transformCode
+    })
 
     const raytracePipelineLayout = device.createPipelineLayout({
         label: "raytrace pipeline layout",
@@ -374,6 +422,21 @@ async function createPipelines(static) {
         layout: denoisePipelineLayout,
         compute: {
             module: denoiseModule
+        }
+    });
+
+    const transformPipelineLayout = device.createPipelineLayout({
+        label: "transform pipeline layout",
+        bindGroupLayouts: [
+            transformLayout
+        ]
+    });
+
+    transformPipeline = device.createComputePipeline({
+        label: "transform pipeline",
+        layout: transformPipelineLayout,
+        compute: {
+            module: transformModule
         }
     });
 }
@@ -501,14 +564,20 @@ function createObjectsBindGroup(scene) {
         size: objectCount * objectSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
+
+    const objectsInfoBuffer = device.createBuffer({
+        label: "objects info buffer",
+        size: objectCount * objectInfoSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
     for (let i = 0; i < objectCount; i++) {
         let o = objectList[i];
-        device.queue.writeBuffer(objectsBuffer, oOffset, o.getBbox1());
-        device.queue.writeBuffer(objectsBuffer, oOffset + 12, new Int32Array([o.mesh.triStart]));
-        device.queue.writeBuffer(objectsBuffer, oOffset + 16, o.getBbox2());
-        device.queue.writeBuffer(objectsBuffer, oOffset + 28, new Int32Array([o.mesh.triEnd]));
-        device.queue.writeBuffer(objectsBuffer, oOffset + 32, o.getTransformMatrix());
-        oOffset += objectSize;
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset, o.getTranslate());
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 12, new Int32Array([o.tStart]));
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 16, o.getScale());
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 28, new Int32Array([o.tEnd]));
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 32, o.getRotate());
+        oOffset += objectInfoSize;
     }
 
     objectsBindGroup = device.createBindGroup({
@@ -521,6 +590,17 @@ function createObjectsBindGroup(scene) {
             { binding: 3, resource: { buffer: triangleNormalsBuffer } },
             { binding: 4, resource: { buffer: objectsBuffer } },
             { binding: 5, resource: { buffer: spheresBuffer } }
+        ]
+    });
+
+    transformBindGroup = device.createBindGroup({
+        label: "transform bind group",
+        layout: transformLayout,
+        entries: [
+            { binding: 0, resource: { buffer: triangleBuffer } },
+            { binding: 1, resource: { buffer: trianglePointBuffer } },
+            { binding: 2, resource: { buffer: objectsBuffer } },
+            { binding: 3, resource: { buffer: objectsInfoBuffer } }
         ]
     });
 }
