@@ -11,6 +11,7 @@ struct object {
     tStart: u32,
     bbox2: vec3f,
     tEnd: u32,
+    m: i32,
     tMat: mat4x4f,
     tMatInv: mat4x4f
 };
@@ -20,7 +21,8 @@ struct objectInfo {
     tStart: u32,
     scale: vec3f,
     tEnd: u32,
-    rotate: vec4f
+    rotate: vec4f,
+    m: i32
 }
 
 const EPSILON = 0.0001;
@@ -67,6 +69,7 @@ const HUGE = 100000.0;
     obj.bbox2 = bbox2;
     obj.tStart = objInfo.tStart;
     obj.tEnd = objInfo.tEnd;
+    obj.m = objInfo.m;
 
     obj.tMat = mat4x4f(s.x, 0, 0, 0, 0, s.y, 0, 0, 0, 0, s.z, 0, t.x, t.y, t.z, 1);
     obj.tMatInv = inverse(obj.tMat);

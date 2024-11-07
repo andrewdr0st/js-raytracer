@@ -1,12 +1,13 @@
 const epsilonV = [0.0001, 0.0001, 0.0001];
 
 class SceneObject {
-    constructor(mesh) {
+    constructor(mesh, mat) {
         this.translateV = [0, 0, 0];
         this.scaleV = [1, 1, 1];
         this.rotateQ = [0, 0, 0, 0];
         this.tStart = mesh.triStart;
         this.tEnd = mesh.triEnd;
+        this.material = mat;
     }
 
     translate(x, y, z) {
@@ -31,5 +32,9 @@ class SceneObject {
 
     getRotate() {
         return new Float32Array(this.rotateQ);
+    }
+
+    getMaterial() {
+        return new Int32Array([this.material, 0, 0, 0]);
     }
 }

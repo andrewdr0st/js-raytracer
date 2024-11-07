@@ -15,13 +15,14 @@ struct material {
     reflectChance: f32,
     fuzzFactor: f32,
     ri: f32,
-    tex: i32
+    tex: i32,
+    texArray: i32
 };
 
 struct sphere {
     pos: vec3f,
     radius: f32,
-    m: u32
+    m: i32
 };
 
 struct triangle {
@@ -37,6 +38,7 @@ struct object {
     tStart: u32,
     bbox2: vec3f,
     tEnd: u32,
+    m: i32,
     tMat: mat4x4f,
     tMatInv: mat4x4f
 };
@@ -63,7 +65,8 @@ const PI = 3.14159265359;
 @group(2) @binding(4) var<storage, read> objects: array<object>;
 @group(2) @binding(5) var<storage, read> spheres: array<sphere>;
 @group(3) @binding(0) var<storage, read> materials: array<material>;
-@group(3) @binding(1) var textures: texture_2d_array<f32>;
+@group(3) @binding(1) var textures8: texture_2d_array<f32>;
+@group(3) @binding(2) var textures16: texture_2d_array<f32>;
 
 @compute @workgroup_size(8, 8, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
     if (id.x > textureDimensions(tex).x || id.y > textureDimensions(tex).y) {
@@ -149,7 +152,7 @@ const PI = 3.14159265359;
                             hr.h = thr.h;
                             hr.p = newR * hr.t + newO;
                             hr.p = (obj.tMat * vec4f(hr.p, 1)).xyz;
-                            hr.m = materials[tri.m];
+                            hr.m = materials[obj.m];
                             hr.uv = thr.uv;
                         }
                     }
@@ -159,8 +162,13 @@ const PI = 3.14159265359;
             let emitLight = hr.m.c * hr.m.e;
             incomingLight += emitLight * rayColor;
             if (hr.m.tex >= 0) {
-                let tc = vec2u(u32(hr.uv.x * 8.0), u32(hr.uv.y * 8.0));
-                rayColor *= textureLoad(textures, tc, hr.m.tex, 0).xyz;
+                if (hr.m.texArray == 0) {
+                    let tc = vec2u(u32(hr.uv.x * 8.0), u32(hr.uv.y * 8.0));
+                    rayColor *= textureLoad(textures8, tc, hr.m.tex, 0).xyz;
+                } else {
+                    let tc = vec2u(u32(hr.uv.x * 16.0), u32(hr.uv.y * 16.0));
+                    rayColor *= textureLoad(textures16, tc, hr.m.tex, 0).xyz;
+                }
                 //rayColor *= vec3f(hr.uv.x, 0, hr.uv.y);
                 //rayColor *= hr.n;
             } else {

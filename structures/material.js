@@ -1,7 +1,7 @@
 let materialId = 0;
 
 class Material {
-    constructor(r, g, b, e, reflectC=0, fuzz=0, ri=0, tex=-1) {
+    constructor(r, g, b, e, reflectC=0, fuzz=0, ri=0, tex=-1, texA = 0) {
         this.r = r;
         this.g = g;
         this.b = b;
@@ -10,15 +10,16 @@ class Material {
         this.fuzz = fuzz;
         this.ri = ri;
         this.tex = tex;
+        this.texA = texA;
         this.id = materialId++;
     }
 
     getValues() {
-        return [this.r, this.g, this.b, this.e, this.reflectC, this.fuzz, this.ri, 0];
+        return [this.r, this.g, this.b, this.e, this.reflectC, this.fuzz, this.ri, 0, 0, 0, 0, 0];
     }
 
     getTex() {
-        return new Int32Array([this.tex]);
+        return new Int32Array([this.tex, this.texA]);
     }
 }
 

@@ -27,8 +27,8 @@ class Scene {
 
     }
 
-    addObject(m) {
-        this.objectList.push(new SceneObject(m));
+    addObject(meshId, matId) {
+        this.objectList.push(new SceneObject(this.meshList[meshId], matId));
         this.objectCount++;
     }
 

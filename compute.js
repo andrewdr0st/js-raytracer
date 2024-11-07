@@ -13,8 +13,10 @@ let normalsTexture;
 let positionsTexture;
 let finalTexture;
 
-let textureArray;
-let texList;
+let textureArray8;
+let texList8;
+let textureArray16;
+let texList16;
 
 let uniformLayout;
 let raytraceTextureLayout;
@@ -41,10 +43,10 @@ const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
 const normalsSize = 16;
-const objectSize = 160;
-const objectInfoSize = 48;
+const objectSize = 172;
+const objectInfoSize = 64;
 const sphereSize = 32;
-const materialSize = 32;
+const materialSize = 48;
 
 const runDenoiser = false;
 const denoisePassCount = 3;
@@ -79,7 +81,11 @@ async function setupGPUDevice(canvas, static=false) {
     let t1 = await loadImage("red8x8.png");
     let t2 = await loadImage("blurple8x8.png");
     let t3 = await loadImage("checker8x8.png");
-    texList = [t1, t2, t3];
+    texList8 = [t1, t2, t3];
+
+    let t4 = await loadImage("brick16x16.png");
+    let t5 = await loadImage("planks16x16.png");
+    texList16 = [t4, t5];
 
     return true;
 }
@@ -178,7 +184,7 @@ async function calculateTransforms() {
 
     pass.setPipeline(transformPipeline);
     pass.setBindGroup(0, transformBindGroup);
-    pass.dispatchWorkgroups(3);
+    pass.dispatchWorkgroups(4);
 
     pass.end();
 
@@ -307,6 +313,10 @@ function createBindGroupLayouts(static) {
                 buffer: { type: "read-only-storage" }
             }, {
                 binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                texture: {format: "rgba8unorm", viewDimension: "2d-array"}
+            }, {
+                binding: 2,
                 visibility: GPUShaderStage.COMPUTE,
                 texture: {format: "rgba8unorm", viewDimension: "2d-array"}
             }
@@ -478,7 +488,7 @@ function createRaytraceTextureBindGroup(static) {
             layout: raytraceTextureLayout,
             entries: [
                 { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
-                { binding: 0, resource: prevTexture.createView() }
+                { binding: 1, resource: prevTexture.createView() }
             ]
         });
     } else {
@@ -506,7 +516,7 @@ function createObjectsBindGroup(scene) {
     for (let i = 0; i < sphereList.length; i++) {
         let s = sphereList[i];
         device.queue.writeBuffer(spheresBuffer, i * sphereSize, new Float32Array(s.getValues()));
-        device.queue.writeBuffer(spheresBuffer, i * sphereSize + 16, new Uint32Array(s.getM()));
+        device.queue.writeBuffer(spheresBuffer, i * sphereSize + 16, new Int32Array(s.getM()));
     }
 
     let triOffset = 0;
@@ -577,6 +587,8 @@ function createObjectsBindGroup(scene) {
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 16, o.getScale());
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 28, new Int32Array([o.tEnd]));
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 32, o.getRotate());
+        console.log(o.getMaterial());
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 48, o.getMaterial());
         oOffset += objectInfoSize;
     }
 
@@ -606,13 +618,22 @@ function createObjectsBindGroup(scene) {
 }
 
 function createMaterialsBindGroup(materialList) {
-    textureArray = device.createTexture({
-        size: [8, 8, texList.length],
+    textureArray8 = device.createTexture({
+        size: [8, 8, texList8.length],
         format: "rgba8unorm",
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
     });
-    for (let i = 0; i < texList.length; i++) {
-        device.queue.copyExternalImageToTexture({source: texList[i]}, {texture: textureArray, origin: {z: i}}, [8, 8]);
+    for (let i = 0; i < texList8.length; i++) {
+        device.queue.copyExternalImageToTexture({source: texList8[i]}, {texture: textureArray8, origin: {z: i}}, [8, 8]);
+    }
+
+    textureArray16 = device.createTexture({
+        size: [16, 16, texList16.length],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
+    });
+    for (let i = 0; i < texList16.length; i++) {
+        device.queue.copyExternalImageToTexture({source: texList16[i]}, {texture: textureArray16, origin: {z: i}}, [16, 16]);
     }
 
     let materials = [];
@@ -623,14 +644,14 @@ function createMaterialsBindGroup(materialList) {
 
     const materialBuffer = device.createBuffer({
         label: "materials buffer",
-        size: materials.byteLength,
+        size: materialList.length * materialSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
     device.queue.writeBuffer(materialBuffer, 0, materials);
 
     for(let i = 0; i < materialList.length; i++) {
         let t = materialList[i].getTex();
-        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 4, t);
+        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 20, t);
     }
 
     materialsBindGroup = device.createBindGroup({
@@ -638,7 +659,8 @@ function createMaterialsBindGroup(materialList) {
         layout: materialsLayout,
         entries: [
             { binding: 0, resource: { buffer : materialBuffer } },
-            { binding: 1, resource: textureArray.createView() }
+            { binding: 1, resource: textureArray8.createView() },
+            { binding: 2, resource: textureArray16.createView() }
         ]
     });
 }

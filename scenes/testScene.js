@@ -8,30 +8,32 @@ class TestScene extends Scene {
 
     async loadMeshes() {
         let floor = new Mesh();
-        floor.setMaterial(this.materialList[0]);
         await floor.parseObjFile("plane.obj");
         this.meshList.push(floor);
 
         let cube = new Mesh();
-        cube.setMaterial(this.materialList[3]);
         await cube.parseObjFile("cube.obj");
         this.meshList.push(cube);
 
         let cylinder = new Mesh();
-        cylinder.setMaterial(this.materialList[5]);
         await cylinder.parseObjFile("cylinder.obj");
         this.meshList.push(cylinder);
     }
 
     setupObjects() {
-        this.addObject(this.meshList[0]);
+        this.addObject(0, 0);
         this.objectList[0].scale(20, 1, 20);
 
-        this.addObject(this.meshList[1]);
+        this.addObject(1, 3);
         this.objectList[1].translate(1, 2.25, 6);
 
-        this.addObject(this.meshList[2]);
+        this.addObject(2, 5);
         this.objectList[2].translate(10, 1, -8);
+
+        this.addObject(1, 5);
+        this.objectList[3].scale(2, 1, 0.5);
+        this.objectList[3].translate(-10, 1, -6);
+        console.log(this.objectList);
 
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);
@@ -48,8 +50,8 @@ class TestScene extends Scene {
         this.materialList.push(new Material(0.2, 0.4, 0.25, 0));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 1.0));
         this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1, 0, 1));
-        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 0));
+        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 1, 1));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
-        this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 1));
+        this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 1, 0));
     }
 }
