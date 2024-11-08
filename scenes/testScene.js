@@ -33,7 +33,6 @@ class TestScene extends Scene {
         this.addObject(1, 5);
         this.objectList[3].scale(2, 1, 0.5);
         this.objectList[3].translate(-10, 1, -6);
-        console.log(this.objectList);
 
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);
@@ -52,6 +51,6 @@ class TestScene extends Scene {
         this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1, 0, 1));
         this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 1, 1));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
-        this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 1, 0));
+        this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 0, 1));
     }
 }

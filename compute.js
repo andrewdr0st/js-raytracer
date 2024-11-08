@@ -43,7 +43,7 @@ const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
 const normalsSize = 16;
-const objectSize = 172;
+const objectSize = 176;
 const objectInfoSize = 64;
 const sphereSize = 32;
 const materialSize = 48;
@@ -177,14 +177,14 @@ async function renderGPU(scene, static=false) {
     return true;
 }
 
-async function calculateTransforms() {
+async function calculateTransforms(scene) {
     const encoder = device.createCommandEncoder({ label: "transform encoder" });
 
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
 
     pass.setPipeline(transformPipeline);
     pass.setBindGroup(0, transformBindGroup);
-    pass.dispatchWorkgroups(4);
+    pass.dispatchWorkgroups(scene.objectCount);
 
     pass.end();
 
@@ -587,7 +587,6 @@ function createObjectsBindGroup(scene) {
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 16, o.getScale());
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 28, new Int32Array([o.tEnd]));
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 32, o.getRotate());
-        console.log(o.getMaterial());
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 48, o.getMaterial());
         oOffset += objectInfoSize;
     }

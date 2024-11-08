@@ -121,7 +121,7 @@ async function initGPU() {
             await scene.setup(w, h);
             scene.camera.pos = [0, 1, 0];
             setupBindGroups(scene);
-            await calculateTransforms();
+            await calculateTransforms(scene);
             requestAnimationFrame(loop);
         }
     }
