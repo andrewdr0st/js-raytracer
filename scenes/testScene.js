@@ -1,7 +1,7 @@
 class TestScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
-        this.camera.backgroundColor = [0.2, 0.2, 0.25];
+        this.camera.backgroundColor = [0.1, 0.1, 0.1];
         this.camera.bounceCount = 8;
         this.camera.raysPerPixel = 4;
     }
@@ -31,8 +31,8 @@ class TestScene extends Scene {
         this.objectList[2].translate(10, 1, -8);
 
         this.addObject(1, 5);
-        this.objectList[3].scale(2, 1, 0.5);
-        this.objectList[3].translate(-10, 1, -6);
+        this.objectList[3].scale(5, 2, 0.2);
+        this.objectList[3].translate(-10, 2, -6);
 
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);

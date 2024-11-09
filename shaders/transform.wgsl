@@ -72,7 +72,8 @@ const HUGE = 100000.0;
     obj.m = objInfo.m;
 
     obj.tMat = mat4x4f(s.x, 0, 0, 0, 0, s.y, 0, 0, 0, 0, s.z, 0, t.x, t.y, t.z, 1);
-    obj.tMatInv = inverse(obj.tMat);
+    obj.tMatInv = mat4x4f(1.0 / s.x, 0, 0, 0, 0, 1.0 / s.y, 0, 0, 0, 0, 1.0 / s.z, 0, -t.x / s.x, -t.y / s.y, -t.z / s.z, 1);
+    //obj.tMatInv = inverse(obj.tMat);
 
     objects[id.x] = obj;
 }
