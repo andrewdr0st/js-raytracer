@@ -56,11 +56,27 @@ const HUGE = 100000.0;
         bbox2 = max(bbox2, p3);
     }
 
-    bbox1 *= s;
-    bbox1 += t;
+    var center = (bbox1 + bbox2) / 2;
+    var ux = vec3f(center.x - bbox1.x, 0, 0);
+    var uy = vec3f(0, center.y - bbox1.y, 0);
+    var uz = vec3f(0, 0, center.z - bbox1.z);
 
-    bbox2 *= s;
-    bbox2 += t;
+    center += t;
+    ux *= s;
+    uy *= s;
+    uz *= s;
+
+    let v1 = center - ux - uy - uz;
+    let v2 = center - ux - uy + uz;
+    let v3 = center - ux + uy - uz;
+    let v4 = center - ux + uy + uz;
+    let v5 = center + ux - uy - uz;
+    let v6 = center + ux - uy + uz;
+    let v7 = center + ux + uy - uz;
+    let v8 = center + ux + uy + uz;
+
+    bbox1 = min(min(min(min(min(min(min(v1, v2), v3), v4), v5), v6), v7), v8);
+    bbox2 = max(max(max(max(max(max(max(v1, v2), v3), v4), v5), v6), v7), v8);
 
     bbox1 -= EPSILONV;
     bbox2 += EPSILONV;
