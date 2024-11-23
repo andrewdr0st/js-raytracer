@@ -3,14 +3,12 @@ function axisAngleToQuaternion(v, theta) {
 }
 
 function qmult(p, q) {
-    let vp = [p[1], p[2], p[3]];
-    let vq = [q[1], q[2], q[3]];
-    let pdq = vdot(vp, vq);
-    let pxq = vcross(vp, vq);
-    let sp = vscalar(vp, p[0]);
-    let sq = vscalar(vq, q[0]);
-    let fv = vadd(vadd(sp, sq), pxq);
-    return [p[0] * q[0] - pdq, fv[0], fv[1], fv[2]];
+    return [
+        p[0] * q[0] - p[1] * q[1] - p[2] * q[2] - p[3] * q[3],
+        p[0] * q[1] + p[1] * q[0] + p[2] * q[3] - p[3] * q[2],
+        p[0] * q[2] - p[1] * q[3] + p[2] * q[0] + p[3] * q[1],
+        p[0] * q[3] + p[1] * q[2] - p[2] * q[1] + p[3] * q[0]
+    ];
 }
 
 function qinv(q) {

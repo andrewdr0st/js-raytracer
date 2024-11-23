@@ -26,6 +26,7 @@ class TestScene extends Scene {
 
         this.addObject(1, 3);
         this.objectList[1].translate(1, 2.25, 6);
+        this.objectList[1].rotate([0, 1, 0], deg2rad(45));
 
         this.addObject(2, 5);
         this.objectList[2].translate(10, 1, -8);

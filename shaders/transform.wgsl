@@ -39,6 +39,7 @@ const HUGE = 100000.0;
     let objInfo = objectsInfo[id.x];
     let t = objInfo.translate;
     let s = objInfo.scale;
+    let rMatrix = quaternionToRotation(objInfo.rotate);
 
     var bbox1 = vec3f(HUGE, HUGE, HUGE);
     var bbox2 = vec3f(-HUGE, -HUGE, -HUGE);
@@ -57,14 +58,23 @@ const HUGE = 100000.0;
     }
 
     var center = (bbox1 + bbox2) / 2;
-    var ux = vec3f(center.x - bbox1.x, 0, 0);
-    var uy = vec3f(0, center.y - bbox1.y, 0);
-    var uz = vec3f(0, 0, center.z - bbox1.z);
+    var ux4 = vec4f(center.x - bbox1.x, 0, 0, 1);
+    var uy4 = vec4f(0, center.y - bbox1.y, 0, 1);
+    var uz4 = vec4f(0, 0, center.z - bbox1.z, 1);
 
     center += t;
-    ux *= s;
-    uy *= s;
-    uz *= s;
+    let s4 = vec4f(s, 1);
+    ux4 *= s4;
+    uy4 *= s4;
+    uz4 *= s4;
+
+    ux4 = rMatrix * ux4;
+    uy4 = rMatrix * uy4;
+    uz4 = rMatrix * uz4;
+
+    let ux = vec3f(ux4[0], ux4[1], ux4[2]);
+    let uy = vec3f(uy4[0], uy4[1], uy4[2]);
+    let uz = vec3f(uz4[0], uz4[1], uz4[2]);
 
     let v1 = center - ux - uy - uz;
     let v2 = center - ux - uy + uz;
@@ -88,13 +98,39 @@ const HUGE = 100000.0;
     obj.m = objInfo.m;
 
     obj.tMat = mat4x4f(s.x, 0, 0, 0, 0, s.y, 0, 0, 0, 0, s.z, 0, t.x, t.y, t.z, 1);
-    obj.tMatInv = mat4x4f(1.0 / s.x, 0, 0, 0, 0, 1.0 / s.y, 0, 0, 0, 0, 1.0 / s.z, 0, -t.x / s.x, -t.y / s.y, -t.z / s.z, 1);
-    //obj.tMatInv = inverse(obj.tMat);
+    obj.tMat = obj.tMat * rMatrix;
+    //obj.tMatInv = mat4x4f(1.0 / s.x, 0, 0, 0, 0, 1.0 / s.y, 0, 0, 0, 0, 1.0 / s.z, 0, -t.x / s.x, -t.y / s.y, -t.z / s.z, 1);
+    obj.tMatInv = inverse(obj.tMat);
 
     objects[id.x] = obj;
 }
 
-  fn inverse(m: mat4x4f) -> mat4x4f {
+fn quaternionToRotation(q: vec4f) -> mat4x4f {
+    let w = q[0];
+    let x = q[1];
+    let y = q[2];
+    let z = q[3];
+    return mat4x4f(
+        1 - 2 * (y * y + z * z),
+        2 * (x * y + w * z),
+        2 * (x * z - w * y),
+        0,
+        2 * (x * y - w * z),
+        1 - 2 * (x * x + z * z),
+        2 * (y * z + w * x),
+        0,
+        2 * (x * z + w * y),
+        2 * (y * z - w * x),
+        1 - 2 * (x * x + y * y),
+        0,
+        0,
+        0,
+        0,
+        1
+    );
+}
+
+fn inverse(m: mat4x4f) -> mat4x4f {
     let a00 = m[0][0]; let a01 = m[0][1]; let a02 = m[0][2]; let a03 = m[0][3];
     let a10 = m[1][0]; let a11 = m[1][1]; let a12 = m[1][2]; let a13 = m[1][3];
     let a20 = m[2][0]; let a21 = m[2][1]; let a22 = m[2][2]; let a23 = m[2][3];
@@ -132,4 +168,4 @@ const HUGE = 100000.0;
         a00 * b09 - a01 * b07 + a02 * b06,
         a31 * b01 - a30 * b03 - a32 * b00,
         a20 * b03 - a21 * b01 + a22 * b00) * (1 / det);
-  }
+}

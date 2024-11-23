@@ -136,7 +136,7 @@ const PI = 3.14159265359;
 
                 if (ohr.h) {
                     let newO = (obj.tMatInv * vec4f(orig, 1)).xyz;
-                    let newR = ray * vec3f(obj.tMatInv[0][0], obj.tMatInv[1][1], obj.tMatInv[2][2]);
+                    let newR = (obj.tMatInv * vec4f(ray, 0)).xyz;
                     for (var j: u32 = obj.tStart; j <= obj.tEnd; j++) {
                         let tri = triangles[j];
                         var thr = hitTriangle(tri, newO, newR, tMax);
@@ -149,6 +149,7 @@ const PI = 3.14159265359;
                             if (!hr.frontFace) {
                                 hr.n = -hr.n;
                             }
+                            hr.n = normalize(obj.tMat * vec4f(hr.n, 0)).xyz;
                             hr.h = thr.h;
                             hr.p = newR * hr.t + newO;
                             hr.p = (obj.tMat * vec4f(hr.p, 1)).xyz;

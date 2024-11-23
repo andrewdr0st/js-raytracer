@@ -4,7 +4,7 @@ class SceneObject {
     constructor(mesh, mat) {
         this.translateV = [0, 0, 0];
         this.scaleV = [1, 1, 1];
-        this.rotateQ = [0, 0, 0, 0];
+        this.rotateQ = [1, 0, 0, 0];
         this.tStart = mesh.triStart;
         this.tEnd = mesh.triEnd;
         this.material = mat;
@@ -18,8 +18,8 @@ class SceneObject {
         this.scaleV = vmult(this.scaleV, [x, y, z]);
     }
 
-    rotate() {
-        
+    rotate(axis, theta) {
+        this.rotateQ = qmult(this.rotateQ, axisAngleToQuaternion(axis, theta));
     }
 
     getTranslate() {
