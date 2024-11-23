@@ -97,12 +97,53 @@ const HUGE = 100000.0;
     obj.tEnd = objInfo.tEnd;
     obj.m = objInfo.m;
 
-    obj.tMat = mat4x4f(s.x, 0, 0, 0, 0, s.y, 0, 0, 0, 0, s.z, 0, t.x, t.y, t.z, 1);
-    obj.tMat = obj.tMat * rMatrix;
+    obj.tMat = createTranslationMatrix(objInfo.translate) * rMatrix * createScaleMatrix(objInfo.scale);
     //obj.tMatInv = mat4x4f(1.0 / s.x, 0, 0, 0, 0, 1.0 / s.y, 0, 0, 0, 0, 1.0 / s.z, 0, -t.x / s.x, -t.y / s.y, -t.z / s.z, 1);
     obj.tMatInv = inverse(obj.tMat);
 
     objects[id.x] = obj;
+}
+
+fn createTranslationMatrix(t: vec3f) -> mat4x4f {
+    return mat4x4f(
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        t[0],
+        t[1],
+        t[2],
+        1
+    );
+}
+
+fn createScaleMatrix(s: vec3f) -> mat4x4f {
+    return mat4x4f(
+        s[0],
+        0,
+        0,
+        0,
+        0,
+        s[1],
+        0,
+        0,
+        0,
+        0,
+        s[2],
+        0,
+        0,
+        0,
+        0,
+        1
+    );
 }
 
 fn quaternionToRotation(q: vec4f) -> mat4x4f {
