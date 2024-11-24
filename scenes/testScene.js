@@ -38,6 +38,9 @@ class TestScene extends Scene {
         this.objectList[3].translate(-10, 2, -6);
         this.objectList[3].rotate([1, 0, 0], deg2rad(30));
 
+        this.addObject(1, 6);
+        this.objectList[4].translate(0, 1, -10);
+
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);
 
@@ -56,5 +59,6 @@ class TestScene extends Scene {
         this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 1, 1));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
         this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 0, 1));
+        this.materialList.push(new Material(0.7, 0.7, 0.7, 0, 0, 0, 0, -1, -1, 1));
     }
 }

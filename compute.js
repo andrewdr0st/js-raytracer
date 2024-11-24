@@ -650,7 +650,7 @@ function createMaterialsBindGroup(materialList) {
 
     for(let i = 0; i < materialList.length; i++) {
         let t = materialList[i].getTex();
-        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 20, t);
+        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 16, t);
     }
 
     materialsBindGroup = device.createBindGroup({

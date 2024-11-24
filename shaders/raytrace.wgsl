@@ -15,6 +15,7 @@ struct material {
     reflectChance: f32,
     fuzzFactor: f32,
     ri: f32,
+    density: f32,
     tex: i32,
     texArray: i32
 };
@@ -92,6 +93,8 @@ const PI = 3.14159265359;
 
         var tMin: f32 = 0.0001;
         var tMax: f32 = 10000.0;
+
+        var inVolume: bool = false;
 
         var hr: hitRec;
         hr.p = camera.pos;
@@ -176,23 +179,37 @@ const PI = 3.14159265359;
                 rayColor *= hr.m.c;
             }
 
-            let matRand = randomF(&rngState);
-            if (hr.m.ri > 0.01) {
-                let cosTheta = dot(-ray, hr.n);
-                let refractiveRatio = select(hr.m.ri, 1.0 / hr.m.ri, hr.frontFace);
-                let r = refract(ray, hr.n, refractiveRatio);
-                if (all(r == vec3f(0.0)) || schlick(cosTheta, refractiveRatio) > randomF(&rngState)) {
-                    hr.d = reflect(ray, hr.n);
+            if (inVolume) {
+                let distToHit = hr.m.density * log(randomF(&rngState));
+                if (distToHit < hr.t) {
+                    hr.d = randomDir(&rngState);
+                    hr.p = orig + ray * distToHit;
                 } else {
-                    hr.d = r;
-                }
-            } else if (matRand < hr.m.reflectChance) {
-                hr.d = reflect(ray, hr.n);
-                if (hr.m.fuzzFactor > 0) {
-                    hr.d += randomDir(&rngState) * hr.m.fuzzFactor;
+                    hr.d = ray;
+                    inVolume = false;
                 }
             } else {
-                hr.d = hr.n + randomDir(&rngState);
+                let matRand = randomF(&rngState);
+                if (hr.m.ri > 0.01) {
+                    let cosTheta = dot(-ray, hr.n);
+                    let refractiveRatio = select(hr.m.ri, 1.0 / hr.m.ri, hr.frontFace);
+                    let r = refract(ray, hr.n, refractiveRatio);
+                    if (all(r == vec3f(0.0)) || schlick(cosTheta, refractiveRatio) > randomF(&rngState)) {
+                        hr.d = reflect(ray, hr.n);
+                    } else {
+                        hr.d = r;
+                    }
+                } else if (matRand < hr.m.reflectChance) {
+                    hr.d = reflect(ray, hr.n);
+                    if (hr.m.fuzzFactor > 0) {
+                        hr.d += randomDir(&rngState) * hr.m.fuzzFactor;
+                    }
+                } else if (hr.m.density < 0) {
+                    hr.d = ray;
+                    inVolume = true;
+                } else {
+                    hr.d = hr.n + randomDir(&rngState);
+                }
             }
             
             if (tMax > 9999) {
