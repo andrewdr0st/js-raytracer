@@ -5,6 +5,7 @@ struct cameraData {
     topLeftPixel: vec3f,
     bounceCount: u32,
     pixelDeltaU: vec3f,
+    antiAliasing: u32,
     pixelDeltaV: vec3f,
     backgroundColor: vec3f
 };
@@ -74,7 +75,7 @@ const PI = 3.14159265359;
         return;
     }
     
-    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
+    var pCenter: vec3f;
     var rngState = u32((id.x * 2167) ^ ((id.y * 31802381) << 1)) + u32((camera.pos.x - 1340.23) * 123457.0 + (camera.pos.y - 8501.921) * 157141.0 + (camera.pos.z + 1749.3847) * 403831.0);
     
     var totalColor = vec3f(0, 0, 0);
@@ -90,6 +91,14 @@ const PI = 3.14159265359;
         var backgroundColor = camera.backgroundColor;
         var rayColor = vec3f(1, 1, 1);
         var incomingLight = vec3f(0, 0, 0);
+
+        if (camera.antiAliasing > 0) {
+            let xRand = randomF(&rngState) - 0.5;
+            let yRand = randomF(&rngState) - 0.5;            
+            pCenter = camera.topLeftPixel + camera.pixelDeltaU * (f32(id.x) - xRand) + camera.pixelDeltaV * (f32(id.y) - yRand);
+        } else {
+            pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
+        }
 
         var tMin: f32 = 0.0001;
         var tMax: f32 = 10000.0;

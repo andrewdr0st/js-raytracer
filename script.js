@@ -101,6 +101,8 @@ async function loop(currentTime) {
         camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
     }
 
+    camera.focusDist += 0.01;
+
     camera.init();
 
     await runGPUThing();
@@ -120,6 +122,7 @@ async function initGPU() {
         if (await setupGPUDevice(tempCanvas)) {
             await scene.setup(w, h);
             scene.camera.pos = [0, 1, 0];
+            scene.camera.antialiasing = true;
             setupBindGroups(scene);
             await calculateTransforms(scene);
             requestAnimationFrame(loop);

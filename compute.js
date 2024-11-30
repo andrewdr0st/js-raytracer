@@ -112,6 +112,11 @@ async function renderGPU(scene, static=false) {
     device.queue.writeBuffer(cameraBuffer, 16, new Float32Array(camera.topLeftPixel));
     device.queue.writeBuffer(cameraBuffer, 28, new Int32Array([camera.bounceCount]));
     device.queue.writeBuffer(cameraBuffer, 32, new Float32Array(camera.pixelDeltaU));
+    if (camera.antialiasing) {
+        device.queue.writeBuffer(cameraBuffer, 44, new Uint32Array([1]));
+    } else {
+        device.queue.writeBuffer(cameraBuffer, 44, new Uint32Array([0]));
+    }
     device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(camera.pixelDeltaV));
     device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(camera.backgroundColor));
 
