@@ -57,6 +57,7 @@ struct hitRec {
 };
 
 const PI = 3.14159265359;
+const EPSLION = 0.00001;
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
@@ -86,6 +87,7 @@ const PI = 3.14159265359;
 
     let bounceCount: u32 = camera.bounceCount;
     let rayCount: u32 = camera.raysPerPixel;
+    var pw = 1.0;
 
     for (var a: u32 = 0; a < rayCount; a++) {
         var backgroundColor = camera.backgroundColor;
@@ -104,6 +106,7 @@ const PI = 3.14159265359;
         var tMax: f32 = 10000.0;
 
         var inVolume: bool = false;
+        var importanceRay: bool = false;
 
         var hr: hitRec;
         hr.p = camera.pos;
@@ -172,7 +175,7 @@ const PI = 3.14159265359;
                 }
             }
             
-            let emitLight = hr.m.c * hr.m.e;
+            let emitLight = hr.m.c * hr.m.e * pw;
             incomingLight += emitLight * rayColor;
             if (hr.m.tex >= 0) {
                 if (hr.m.texArray == 0) {
@@ -186,6 +189,9 @@ const PI = 3.14159265359;
                 //rayColor *= hr.n;
             } else {
                 rayColor *= hr.m.c;
+            }
+            if (importanceRay) {
+                break;
             }
 
             if (inVolume) {
@@ -217,7 +223,17 @@ const PI = 3.14159265359;
                     hr.d = ray;
                     inVolume = true;
                 } else {
-                    hr.d = hr.n + randomDir(&rngState);
+                    if (a == 0 && b == 0 && hr.m.e < EPSLION) {
+                        let p = sampleSun(&rngState);
+                        let d = p - hr.p;
+                        let dist_squared = dot(d, d);
+                        hr.d = normalize(d);
+                        let cos_theta = dot(hr.d, hr.n);
+                        pw = dist_squared / (cos_theta * PI * 2);
+                        importanceRay = true;
+                    } else {
+                        hr.d = hr.n + randomDir(&rngState);
+                    }
                 }
             }
             
@@ -235,6 +251,7 @@ const PI = 3.14159265359;
     totalColor = sqrt(totalColor);
 
     textureStore(tex, id.xy, vec4f(totalColor, 1));
+    //textureStore(tex, id.xy, vec4f(pw, 0, 0, 1));
 }
 
 fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> f32 {
@@ -341,4 +358,12 @@ fn randomDir(state: ptr<function, u32>) -> vec3f {
     let x = sqrt(1 - z * z) * cos(theta);
     let y = sqrt(1 - z * z) * sin(theta);
     return vec3f(x, y, z);
+}
+
+fn sampleSun(state: ptr<function, u32>) -> vec3f {
+    let s = spheres[0];
+    let center: vec3f = s.pos;
+    let radius: f32 = s.radius;
+    let d = randomDir(state);
+    return center + d * radius;
 }
