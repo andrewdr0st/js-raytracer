@@ -57,7 +57,7 @@ struct hitRec {
 };
 
 const PI = 3.14159265359;
-const EPSLION = 0.00001;
+const EPSILON = 0.00001;
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
@@ -87,6 +87,8 @@ const EPSLION = 0.00001;
 
     let bounceCount: u32 = camera.bounceCount;
     let rayCount: u32 = camera.raysPerPixel;
+
+    let sunSurfaceArea = spheres[0].radius * spheres[0].radius * PI * 4;
     var pw = 1.0;
 
     for (var a: u32 = 0; a < rayCount; a++) {
@@ -223,13 +225,16 @@ const EPSLION = 0.00001;
                     hr.d = ray;
                     inVolume = true;
                 } else {
-                    if (a == 0 && b == 0 && hr.m.e < EPSLION) {
+                    if (a == 0 && hr.m.e < EPSILON) {
                         let p = sampleSun(&rngState);
                         let d = p - hr.p;
                         let dist_squared = dot(d, d);
                         hr.d = normalize(d);
-                        let cos_theta = dot(hr.d, hr.n);
-                        pw = dist_squared / (cos_theta * PI * 2);
+                        let cos_theta = abs(dot(hr.d, hr.n));
+                        if (cos_theta < EPSILON) {
+                            break;
+                        }
+                        pw = (cos_theta * sunSurfaceArea) / dist_squared;
                         importanceRay = true;
                     } else {
                         hr.d = hr.n + randomDir(&rngState);

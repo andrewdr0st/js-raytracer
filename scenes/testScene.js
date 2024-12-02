@@ -3,7 +3,7 @@ class TestScene extends Scene {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
         this.camera.backgroundColor = [0.1, 0.1, 0.1];
         this.camera.bounceCount = 8;
-        this.camera.raysPerPixel = 1;
+        this.camera.raysPerPixel = 4;
     }
 
     async loadMeshes() {
