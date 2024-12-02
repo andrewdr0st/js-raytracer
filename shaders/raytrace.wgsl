@@ -89,12 +89,12 @@ const EPSILON = 0.00001;
     let rayCount: u32 = camera.raysPerPixel;
 
     let sunSurfaceArea = spheres[0].radius * spheres[0].radius * PI * 4;
-    var pw = 1.0;
 
     for (var a: u32 = 0; a < rayCount; a++) {
         var backgroundColor = camera.backgroundColor;
         var rayColor = vec3f(1, 1, 1);
         var incomingLight = vec3f(0, 0, 0);
+        var pw: f32 = 1.0;
 
         if (camera.antiAliasing > 0) {
             let xRand = randomF(&rngState) - 0.5;
@@ -177,8 +177,12 @@ const EPSILON = 0.00001;
                 }
             }
             
-            let emitLight = hr.m.c * hr.m.e * pw;
+            let emitLight = hr.m.c * (hr.m.e * pw);
             incomingLight += emitLight * rayColor;
+            if (importanceRay || tMax > 9999) {
+                break;
+            }
+
             if (hr.m.tex >= 0) {
                 if (hr.m.texArray == 0) {
                     let tc = vec2u(u32(hr.uv.x * 8.0), u32(hr.uv.y * 8.0));
@@ -191,9 +195,6 @@ const EPSILON = 0.00001;
                 //rayColor *= hr.n;
             } else {
                 rayColor *= hr.m.c;
-            }
-            if (importanceRay) {
-                break;
             }
 
             if (inVolume) {
@@ -230,20 +231,13 @@ const EPSILON = 0.00001;
                         let d = p - hr.p;
                         let dist_squared = dot(d, d);
                         hr.d = normalize(d);
-                        let cos_theta = abs(dot(hr.d, hr.n));
-                        if (cos_theta < EPSILON) {
-                            break;
-                        }
-                        pw = (cos_theta * sunSurfaceArea) / dist_squared;
+                        let cos_theta = dot(hr.d, hr.n);
+                        pw = select(0.0, (cos_theta * sunSurfaceArea) / dist_squared, cos_theta > 0);
                         importanceRay = true;
                     } else {
                         hr.d = hr.n + randomDir(&rngState);
                     }
                 }
-            }
-            
-            if (tMax > 9999) {
-                break;
             }
         }
 
