@@ -18,17 +18,21 @@ class TestScene extends Scene {
         let cylinder = new Mesh();
         await cylinder.parseObjFile("cylinder.obj");
         this.meshList.push(cylinder);
+
+        let teapot = new Mesh();
+        await teapot.parseObjFile("teapot.obj");
+        this.meshList.push(teapot);
     }
 
     setupObjects() {
         this.addObject(0, 0);
         this.objectList[0].scale(20, 1, 20);
 
-        this.addObject(1, 3);
-        this.objectList[1].translate(1, 2.25, 6);
-        this.objectList[1].rotate([0, 1, 0], deg2rad(45));
+        this.addObject(3, 7);
+        this.objectList[1].translate(1, 0.5, 6);
+        this.objectList[1].scale(0.5, 0.5, 0.5);
 
-        this.addObject(2, 5);
+        this.addObject(2, 3);
         this.objectList[2].translate(10, 1, -8);
         this.objectList[2].rotate([0, 0, 1], deg2rad(90));
         this.objectList[2].rotate([1, 0, 0], deg2rad(-60));
@@ -60,5 +64,6 @@ class TestScene extends Scene {
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
         this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 0, 1));
         this.materialList.push(new Material(0.7, 0.7, 0.7, 0, 0, 0, 0, -1, -1, 1));
+        this.materialList.push(new Material(0.9, 0.8, 0.6, 0, 1.0, 0.05));
     }
 }

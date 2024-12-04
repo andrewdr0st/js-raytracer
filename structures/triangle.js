@@ -19,3 +19,16 @@ class Triangle {
         return [this.v1, this.v2, this.v3, 0, this.vt1, this.vt2, this.vt3, 0, this.vn1, this.vn2, this.vn3, this.useNorms];
     }
 }
+
+class BVHTriangle {
+    constructor(index, v1, v2, v3) {
+        this.index = index;
+        this.v1 = v1;
+        this.v2 = v2;
+        this.v3 = v3;
+
+        this.triMin = vmin(vmin(v1, v2), v3);
+        this.triMax = vmax(vmax(v1, v2), v3);
+        this.triMid = vscalar(vadd(this.triMin, this.triMax), 0.5);
+    }
+}

@@ -7,12 +7,14 @@ class Mesh {
     constructor() {
         this.triangles = [];
         this.tCount = 0;
-        this.verticies = [];
+        this.vertices = [];
         this.vCount = 0;
         this.textureCoords = [];
         this.tcCount = 0;
         this.normals = [];
         this.nCount = 0;
+
+        this.bvhTriangles = [];
 
         this.triStart = 0;
         this.triEnd = 0;
@@ -32,7 +34,7 @@ class Mesh {
             let type = parts[0];
 
             if (type == "v") {
-                this.verticies = this.verticies.concat([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 0]);
+                this.vertices = this.vertices.concat([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]), 0]);
                 this.vCount++;
             } else if (type == "vt") {
                 this.textureCoords = this.textureCoords.concat([parseFloat(parts[1]), parseFloat(parts[2])]);
@@ -63,6 +65,7 @@ class Mesh {
                         this.triangles.push(new Triangle(parseInt(v1[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v3[0]) + vertexOffset, parseInt(v1[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v3[1]) + tcOffset, parseInt(v1[2]) + vnormalOffset, parseInt(v2[2]) + vnormalOffset, parseInt(v3[2]) + vnormalOffset));
                     }
                 }
+                this.addBVHTriangle(this.tCount, v1, v2, v3);
                 this.tCount++;
             }
         }
@@ -85,7 +88,7 @@ class Mesh {
     }
 
     getVerticies() {
-        return new Float32Array(this.verticies);
+        return new Float32Array(this.vertices);
     }
 
     getUvs() {
@@ -96,19 +99,10 @@ class Mesh {
         return new Float32Array(this.normals);
     }
 
-    translate(t) {
-        for (let i = 0; i < this.verticies.length; i += 4) {
-            this.verticies[i] += t[0];
-            this.verticies[i + 1] += t[1];
-            this.verticies[i + 2] += t[2];
-        }
-    }
-
-    scale(s) {
-        for (let i = 0; i < this.verticies.length; i += 4) {
-            this.verticies[i] *= s[0];
-            this.verticies[i + 1] *= s[1];
-            this.verticies[i + 2] *= s[2];
-        }
+    addBVHTriangle(index, v1, v2, v3) {
+        let v01 = [this.vertices[v1], this.vertices[v1 + 1], this.vertices[v1 + 2]];
+        let v02 = [this.vertices[v2], this.vertices[v2 + 1], this.vertices[v2 + 2]];
+        let v03 = [this.vertices[v3], this.vertices[v3 + 1], this.vertices[v3 + 2]];
+        this.bvhTriangles.push(new BVHTriangle(index, v01, v02, v03));
     }
 }
