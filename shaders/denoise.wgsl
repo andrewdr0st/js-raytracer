@@ -14,8 +14,8 @@ struct parameters {
 @group(1) @binding(1) var ptex: texture_storage_2d<rgba16float, read>;
 @group(2) @binding(0) var<storage, read> params: parameters;
 
-@compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
-    if (id.x > textureDimensions(otex).x) {
+@compute @workgroup_size(8, 8, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
+    if (id.x > textureDimensions(otex).x || id.y > textureDimensions(otex).y) {
         return;
     }
 
@@ -27,9 +27,8 @@ struct parameters {
     var t: vec4f;
     var dist2: f32;
 
-
     for (var i = 0; i < 25; i++) {
-        let uv = id.xy + vec2u(params.offset[i] * params.stepwidth);
+        let uv = min(id.xy + vec2u(params.offset[i] * params.stepwidth), textureDimensions(otex) - vec2u(1, 1));
 
         let ctmp = textureLoad(rtex, uv);
         t = cval - ctmp;
@@ -51,7 +50,7 @@ struct parameters {
         cumulative += weight * params.kernel[i];
     }
     
-    //textureStore(otex, id.xy, cval);
+    //textureStore(otex, id.xy, pval);
     //textureStore(otex, id.xy, nval);
     textureStore(otex, id.xy, sum / cumulative);
 }

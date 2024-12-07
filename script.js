@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
 const staticRender = false;
-const pixelScaleFactor = 2;
+const pixelScaleFactor = 1;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
@@ -91,6 +91,7 @@ let lastFrameTime = 0;
 async function loop(currentTime) {
     const deltaTime = (currentTime - lastFrameTime) * 0.001;
     lastFrameTime = currentTime;
+    console.log(1 / deltaTime);
     let camera = scene.camera;
 
     if (staticRender) {

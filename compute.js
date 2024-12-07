@@ -48,7 +48,7 @@ const objectInfoSize = 64;
 const sphereSize = 32;
 const materialSize = 48;
 
-const runDenoiser = false;
+const runDenoiser = true;
 const denoisePassCount = 3;
 let stepw = 1.0;
 
@@ -166,7 +166,7 @@ async function renderGPU(scene, static=false) {
 
             if (i + 1 < denoisePassCount) {
                 encoder.copyTextureToTexture({texture: finalTexture}, {texture: raytraceTexture}, {width: camera.imgW, height: camera.imgH});
-                stepw++;
+                stepw *= 2;
                 device.queue.writeBuffer(denoiseParamsBuffer, 78 * 4, new Float32Array([stepw]));
             }
         }

@@ -23,12 +23,24 @@ struct triangle {
     useNorms: u32
 };
 
+struct object {
+    bbox1: vec3f,
+    tStart: u32,
+    bbox2: vec3f,
+    tEnd: u32,
+    m: i32,
+    tMat: mat4x4f,
+    tMatInv: mat4x4f
+};
+
 struct hitRec {
     p: vec3f,
     t: f32,
     n: vec3f,
     h: bool,
-    frontFace: bool
+    d: vec3f,
+    frontFace: bool,
+    uv: vec2f
 };
 
 @group(0) @binding(0) var<uniform> camera: cameraData;
@@ -38,16 +50,19 @@ struct hitRec {
 @group(2) @binding(1) var<storage, read> triPoints: array<vec3f>;
 @group(2) @binding(2) var<storage, read> triUvs: array<vec2f>;
 @group(2) @binding(3) var<storage, read> triNorms: array<vec3f>;
-@group(2) @binding(4) var<storage, read> spheres: array<sphere>;
+@group(2) @binding(4) var<storage, read> objects: array<object>;
+@group(2) @binding(5) var<storage, read> spheres: array<sphere>;
 
-@compute @workgroup_size(64, 1, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
-    if (id.x > textureDimensions(ntex).x) {
+@compute @workgroup_size(8, 8, 1) fn normalsPositions(@builtin(global_invocation_id) id: vec3u) {
+    if (id.x > textureDimensions(ntex).x || id.y > textureDimensions(ntex).y) {
         return;
     }
     
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
+
     let sphereCount = arrayLength(&spheres);
     let triCount = arrayLength(&triangles);
+    let objCount = arrayLength(&objects);
 
     var tMin: f32 = 0.0001;
     var tMax: f32 = 10000.0;
@@ -77,20 +92,32 @@ struct hitRec {
         }
     }
 
-    for (var i: u32 = 0; i < triCount; i++) {
-        let tri = triangles[i];
-        var thr = hitTriangle(tri, orig, ray, tMax);
+    for (var i: u32 = 0; i < objCount; i++) {
+        let obj = objects[i];
+        var ohr = hitObject(obj, orig, ray);
 
-        if (thr.h && thr.t > tMin && thr.t < tMax) {
-            tMax = thr.t;
-            hr.t = thr.t;
-            hr.n = thr.n;
-            hr.frontFace = dot(ray, hr.n) < 0;
-            if (!hr.frontFace) {
-                hr.n = -hr.n;
+        if (ohr.h) {
+            let newO = (obj.tMatInv * vec4f(orig, 1)).xyz;
+            let newR = (obj.tMatInv * vec4f(ray, 0)).xyz;
+            for (var j: u32 = obj.tStart; j <= obj.tEnd; j++) {
+                let tri = triangles[j];
+                var thr = hitTriangle(tri, newO, newR, tMax);
+
+                if (thr.h && thr.t > tMin && thr.t < tMax) {
+                    tMax = thr.t;
+                    hr.t = thr.t;
+                    hr.n = thr.n;
+                    hr.frontFace = dot(newR, hr.n) < 0;
+                    if (!hr.frontFace) {
+                        hr.n = -hr.n;
+                    }
+                    hr.n = normalize(obj.tMat * vec4f(hr.n, 0)).xyz;
+                    hr.h = thr.h;
+                    hr.p = newR * hr.t + newO;
+                    hr.p = (obj.tMat * vec4f(hr.p, 1)).xyz;
+                    hr.uv = thr.uv;
+                }
             }
-            hr.h = thr.h;
-            hr.p = ray * hr.t + orig;
         }
     }
 
@@ -151,5 +178,27 @@ fn hitTriangle(tri: triangle, orig: vec3f, dir: vec3f, tMax: f32) -> hitRec {
         let normc = triNorms[tri.norms.z];
         hr.n = norma + beta * (normb - norma) + gamma * (normc - norma);
     }
+    return hr;
+}
+
+fn hitObject(obj: object, orig: vec3f, dir: vec3f) -> hitRec {
+    var hr: hitRec;
+    let x0 = (obj.bbox1.x - orig.x) / dir.x;
+    let x1 = (obj.bbox2.x - orig.x) / dir.x;
+    let minx = min(x0, x1);
+    let maxx = max(x0, x1);
+    let y0 = (obj.bbox1.y - orig.y) / dir.y;
+    let y1 = (obj.bbox2.y - orig.y) / dir.y;
+    let miny = min(y0, y1);
+    let maxy = max(y0, y1);
+    let z0 = (obj.bbox1.z - orig.z) / dir.z;
+    let z1 = (obj.bbox2.z - orig.z) / dir.z;
+    let minz = min(z0, z1);
+    let maxz = max(z0, z1);
+    let tenter = max(max(minx, miny), minz);
+    let texit = min(min(maxx, maxy), maxz);
+
+    hr.h = tenter <= texit && texit >= 0;
+    hr.p = orig + tenter * dir;
     return hr;
 }

@@ -1,9 +1,9 @@
 class TestScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
-        this.camera.backgroundColor = [0.1, 0.1, 0.1];
+        this.camera.backgroundColor = [0.0, 0.0, 0.0];
         this.camera.bounceCount = 8;
-        this.camera.raysPerPixel = 2;
+        this.camera.raysPerPixel = 8;
     }
 
     async loadMeshes() {
@@ -28,7 +28,7 @@ class TestScene extends Scene {
         this.addObject(0, 0);
         this.objectList[0].scale(20, 1, 20);
 
-        this.addObject(3, 7);
+        this.addObject(1, 7);
         this.objectList[1].translate(1, 0.5, 6);
         this.objectList[1].scale(0.5, 0.5, 0.5);
 
@@ -42,8 +42,8 @@ class TestScene extends Scene {
         this.objectList[3].translate(-10, 2, -6);
         this.objectList[3].rotate([1, 0, 0], deg2rad(30));
 
-        this.addObject(1, 6);
-        this.objectList[4].translate(0, 1, -10);
+        //this.addObject(1, 6);
+        //this.objectList[4].translate(0, 1, -10);
 
         let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
         this.sphereList.push(sun);
@@ -64,6 +64,6 @@ class TestScene extends Scene {
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
         this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 0, 1));
         this.materialList.push(new Material(0.7, 0.7, 0.7, 0, 0, 0, 0, -1, -1, 1));
-        this.materialList.push(new Material(0.9, 0.8, 0.6, 0, 1.0, 0.05));
+        this.materialList.push(new Material(0.9, 0.8, 0.7, 0, 1.0, 0.05));
     }
 }
