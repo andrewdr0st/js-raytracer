@@ -46,26 +46,29 @@ class Mesh {
                 let v1 = parts[1].split("/");
                 let v2 = parts[2].split("/");
                 let v3 = parts[3].split("/");
+                let v1id = parseInt(v1[0]) + vertexOffset;
+                let v2id = parseInt(v2[0]) + vertexOffset;
+                let v3id = parseInt(v3[0]) + vertexOffset;
                 if (v1.length == 1) {
                     if (invert) {
-                        this.triangles.push(new Triangle(parseInt(v3[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v1[0]) + vertexOffset));
+                        this.triangles.push(new Triangle(v3id, v2id, v1id));
                     } else {
-                        this.triangles.push(new Triangle(parseInt(v1[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v3[0]) + vertexOffset));
+                        this.triangles.push(new Triangle(v1id, v2id, v3id));
                     }
                 } else if (v1.length == 2) {
                     if (invert) {
-                        this.triangles.push(new Triangle(parseInt(v3[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v1[0]) + vertexOffset, parseInt(v3[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v1[1]) + tcOffset));
+                        this.triangles.push(new Triangle(v3id, v2id, v1id, parseInt(v3[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v1[1]) + tcOffset));
                     } else {
-                        this.triangles.push(new Triangle(parseInt(v1[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v3[0]) + vertexOffset, parseInt(v1[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v3[1]) + tcOffset));
+                        this.triangles.push(new Triangle(v1id, v2id, v3id, parseInt(v1[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v3[1]) + tcOffset));
                     }
                 } else {
                     if (invert) {
-                        this.triangles.push(new Triangle(parseInt(v3[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v1[0]) + vertexOffset, parseInt(v3[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v1[1]) + tcOffset, parseInt(v3[2]) + vnormalOffset, parseInt(v2[2]) + vnormalOffset, parseInt(v1[2]) + vnormalOffset));
+                        this.triangles.push(new Triangle(v3id, v2id, v1id, parseInt(v3[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v1[1]) + tcOffset, parseInt(v3[2]) + vnormalOffset, parseInt(v2[2]) + vnormalOffset, parseInt(v1[2]) + vnormalOffset));
                     } else {
-                        this.triangles.push(new Triangle(parseInt(v1[0]) + vertexOffset, parseInt(v2[0]) + vertexOffset, parseInt(v3[0]) + vertexOffset, parseInt(v1[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v3[1]) + tcOffset, parseInt(v1[2]) + vnormalOffset, parseInt(v2[2]) + vnormalOffset, parseInt(v3[2]) + vnormalOffset));
+                        this.triangles.push(new Triangle(v1id, v2id, v3id, parseInt(v1[1]) + tcOffset, parseInt(v2[1]) + tcOffset, parseInt(v3[1]) + tcOffset, parseInt(v1[2]) + vnormalOffset, parseInt(v2[2]) + vnormalOffset, parseInt(v3[2]) + vnormalOffset));
                     }
                 }
-                this.addBVHTriangle(this.tCount, v1, v2, v3);
+                this.addBVHTriangle(this.tCount, v1id, v2id, v3id);
                 this.tCount++;
             }
         }
@@ -77,6 +80,8 @@ class Mesh {
         this.triStart = totalTris;
         totalTris += this.tCount;
         this.triEnd = totalTris - 1;
+
+        console.log(this.vertices);
     }
 
     getTriangles() {
@@ -100,6 +105,9 @@ class Mesh {
     }
 
     addBVHTriangle(index, v1, v2, v3) {
+        v1 = (v1 - (vertexOffset + 1)) * 4;
+        v2 = (v2 - (vertexOffset + 1)) * 4;
+        v3 = (v3 - (vertexOffset + 1)) * 4;
         let v01 = [this.vertices[v1], this.vertices[v1 + 1], this.vertices[v1 + 2]];
         let v02 = [this.vertices[v2], this.vertices[v2 + 1], this.vertices[v2 + 2]];
         let v03 = [this.vertices[v3], this.vertices[v3 + 1], this.vertices[v3 + 2]];

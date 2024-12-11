@@ -6,6 +6,8 @@ const blackBorders = false;
 const staticRender = false;
 const pixelScaleFactor = 1;
 
+let debugFramerate = false;
+
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;
 
@@ -91,7 +93,9 @@ let lastFrameTime = 0;
 async function loop(currentTime) {
     const deltaTime = (currentTime - lastFrameTime) * 0.001;
     lastFrameTime = currentTime;
-    console.log(1 / deltaTime);
+    if (debugFramerate) {
+        console.log(1 / deltaTime);
+    }
     let camera = scene.camera;
 
     if (staticRender) {

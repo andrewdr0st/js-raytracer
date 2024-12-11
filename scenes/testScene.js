@@ -1,15 +1,19 @@
 class TestScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
-        this.camera.backgroundColor = [0.0, 0.0, 0.0];
+        this.camera.backgroundColor = [0.1, 0.1, 0.1];
         this.camera.bounceCount = 8;
-        this.camera.raysPerPixel = 8;
+        this.camera.raysPerPixel = 16;
     }
 
     async loadMeshes() {
         let floor = new Mesh();
         await floor.parseObjFile("plane.obj");
         this.meshList.push(floor);
+
+        let btest = new BVHNode(floor, floor.bvhTriangles, 0);
+        btest.findBounds();
+        console.log(btest);
 
         let cube = new Mesh();
         await cube.parseObjFile("cube.obj");
@@ -19,6 +23,11 @@ class TestScene extends Scene {
         await cylinder.parseObjFile("cylinder.obj");
         this.meshList.push(cylinder);
 
+        let b = new BVHNode(cylinder, cylinder.bvhTriangles, 0);
+        b.findBounds();
+        b.findChildren();
+        console.log(b);
+        
         let teapot = new Mesh();
         await teapot.parseObjFile("teapot.obj");
         this.meshList.push(teapot);
