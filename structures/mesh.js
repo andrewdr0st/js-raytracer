@@ -2,6 +2,7 @@ let vertexOffset = -1;
 let tcOffset = -1;
 let vnormalOffset = -1;
 let totalTris = 0;
+let bvhOffset = 0;
 
 class Mesh {
     constructor() {
@@ -15,6 +16,9 @@ class Mesh {
         this.nCount = 0;
 
         this.bvhTriangles = [];
+        this.bvhNode = null;
+        this.bvhList = [];
+        this.rootNode = 0;
 
         this.triStart = 0;
         this.triEnd = 0;
@@ -80,8 +84,6 @@ class Mesh {
         this.triStart = totalTris;
         totalTris += this.tCount;
         this.triEnd = totalTris - 1;
-
-        console.log(this.vertices);
     }
 
     getTriangles() {
@@ -112,5 +114,38 @@ class Mesh {
         let v02 = [this.vertices[v2], this.vertices[v2 + 1], this.vertices[v2 + 2]];
         let v03 = [this.vertices[v3], this.vertices[v3 + 1], this.vertices[v3 + 2]];
         this.bvhTriangles.push(new BVHTriangle(index, v01, v02, v03));
+    }
+
+    buildBVH() {
+        this.bvhNode = new BVHNode(this, this.bvhTriangles, 0);
+        this.bvhNode.findBounds();
+        this.bvhNode.findChildrenRecursive();
+        this.prepareGPUBVH();
+    }
+
+    prepareGPUBVH() {
+        let newTriList = [];
+        let nodeQueue = [this.bvhNode];
+        let i = 1;
+        let tCount = 0;
+        while (nodeQueue.length > 0) {
+            let n = nodeQueue.shift();
+            if (n.child1 == null) {
+                let l = n.bvhTris.length;
+                this.bvhList.push(new GpuBVHNode(n.a, n.b, l, tCount + this.triStart));
+                tCount += l;
+                for (let j = 0; j < l; j++) {
+                    newTriList.push(this.triangles[n.bvhTris[j].index]);
+                }
+            } else {
+                this.bvhList.push(new GpuBVHNode(n.a, n.b, 0, i + bvhOffset));
+                i += 2;
+                nodeQueue.push(n.child1);
+                nodeQueue.push(n.child2);
+            }
+        }
+        this.triangles = newTriList;
+        this.rootNode = bvhOffset;
+        bvhOffset += this.bvhList.length;
     }
 }

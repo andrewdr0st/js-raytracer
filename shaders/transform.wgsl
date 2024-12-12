@@ -1,16 +1,7 @@
-struct triangle {
-    points: vec3u,
-    m: u32,
-    uvs: vec3u,
-    norms: vec3u,
-    useNorms: u32
-};
-
 struct object {
     bbox1: vec3f,
-    tStart: u32,
+    rootNode: u32,
     bbox2: vec3f,
-    tEnd: u32,
     m: i32,
     tMat: mat4x4f,
     tMatInv: mat4x4f
@@ -18,21 +9,26 @@ struct object {
 
 struct objectInfo {
     translate: vec3f,
-    tStart: u32,
+    rootNode: u32,
     scale: vec3f,
-    tEnd: u32,
-    rotate: vec4f,
-    m: i32
+    m: i32,
+    rotate: vec4f
+};
+
+struct bvhNode {
+    bbox1: vec3f,
+    triCount: u32,
+    bbox2: vec3f,
+    idx: u32
 }
 
 const EPSILON = 0.0001;
 const EPSILONV = vec3f(EPSILON, EPSILON, EPSILON);
 const HUGE = 100000.0;
 
-@group(0) @binding(0) var<storage, read> triangles: array<triangle>;
-@group(0) @binding(1) var<storage, read> triPoints: array<vec3f>;
-@group(0) @binding(2) var<storage, read_write> objects: array<object>;
-@group(0) @binding(3) var<storage, read> objectsInfo: array<objectInfo>;
+@group(0) @binding(0) var<storage, read> bvhNodes: array<bvhNode>;
+@group(0) @binding(1) var<storage, read_write> objects: array<object>;
+@group(0) @binding(2) var<storage, read> objectsInfo: array<objectInfo>;
 
 @compute @workgroup_size(1) fn transform(@builtin(global_invocation_id) id: vec3u) {
     var obj: object;
@@ -40,22 +36,10 @@ const HUGE = 100000.0;
     let t = objInfo.translate;
     let s = objInfo.scale;
     let rMatrix = quaternionToRotation(objInfo.rotate);
+    let bNode = bvhNodes[objInfo.rootNode];
 
-    var bbox1 = vec3f(HUGE, HUGE, HUGE);
-    var bbox2 = vec3f(-HUGE, -HUGE, -HUGE);
-
-    for (var i: u32 = objInfo.tStart; i <= objInfo.tEnd; i++) {
-        let tri = triangles[i];
-        let p1 = triPoints[tri.points.x];
-        let p2 = triPoints[tri.points.y];
-        let p3 = triPoints[tri.points.z];
-        bbox1 = min(bbox1, p1);
-        bbox1 = min(bbox1, p2);
-        bbox1 = min(bbox1, p3);
-        bbox2 = max(bbox2, p1);
-        bbox2 = max(bbox2, p2);
-        bbox2 = max(bbox2, p3);
-    }
+    var bbox1 = bNode.bbox1;
+    var bbox2 = bNode.bbox2;
 
     var center = (bbox1 + bbox2) / 2;
     var ux4 = vec4f(center.x - bbox1.x, 0, 0, 1);
@@ -93,8 +77,7 @@ const HUGE = 100000.0;
 
     obj.bbox1 = bbox1;
     obj.bbox2 = bbox2;
-    obj.tStart = objInfo.tStart;
-    obj.tEnd = objInfo.tEnd;
+    obj.rootNode = objInfo.rootNode;
     obj.m = objInfo.m;
 
     obj.tMat = createTranslationMatrix(objInfo.translate) * rMatrix * createScaleMatrix(objInfo.scale);

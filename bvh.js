@@ -20,6 +20,16 @@ class BVHNode {
         this.depth = depth;
     }
 
+    findChildrenRecursive() {
+        if (this.bvhTris.length > 2 || this.depth == 22) {
+            this.findChildren();
+        }
+        if (this.child1 != null) {
+            this.child1.findChildrenRecursive();
+            this.child2.findChildrenRecursive();
+        }
+    }
+
     findChildren() {
         let split = null;
         let bestCost = 100000000000000.0;
@@ -40,6 +50,9 @@ class BVHNode {
                     split = [b0, b1];
                 }
             }
+        }
+        if (split == null) {
+            return null;
         }
         this.child1 = split[0];
         this.child2 = split[1];

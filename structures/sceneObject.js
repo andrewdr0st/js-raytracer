@@ -5,8 +5,7 @@ class SceneObject {
         this.translateV = [0, 0, 0];
         this.scaleV = [1, 1, 1];
         this.rotateQ = [1, 0, 0, 0];
-        this.tStart = mesh.triStart;
-        this.tEnd = mesh.triEnd;
+        this.rootNode = mesh.rootNode;
         this.material = mat;
     }
 
@@ -35,6 +34,10 @@ class SceneObject {
     }
 
     getMaterial() {
-        return new Int32Array([this.material, 0, 0, 0]);
+        return new Int32Array([this.material]);
+    }
+
+    getRootNode() {
+        return new Uint32Array([this.rootNode])
     }
 }

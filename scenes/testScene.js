@@ -3,43 +3,38 @@ class TestScene extends Scene {
         this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
         this.camera.backgroundColor = [0.1, 0.1, 0.1];
         this.camera.bounceCount = 8;
-        this.camera.raysPerPixel = 16;
+        this.camera.raysPerPixel = 2;
     }
 
     async loadMeshes() {
         let floor = new Mesh();
         await floor.parseObjFile("plane.obj");
         this.meshList.push(floor);
-
-        let btest = new BVHNode(floor, floor.bvhTriangles, 0);
-        btest.findBounds();
-        console.log(btest);
+        floor.buildBVH();
 
         let cube = new Mesh();
         await cube.parseObjFile("cube.obj");
         this.meshList.push(cube);
+        cube.buildBVH();
 
         let cylinder = new Mesh();
         await cylinder.parseObjFile("cylinder.obj");
         this.meshList.push(cylinder);
-
-        let b = new BVHNode(cylinder, cylinder.bvhTriangles, 0);
-        b.findBounds();
-        b.findChildren();
-        console.log(b);
+        cylinder.buildBVH();
         
         let teapot = new Mesh();
         await teapot.parseObjFile("teapot.obj");
         this.meshList.push(teapot);
+        teapot.buildBVH();
     }
 
     setupObjects() {
         this.addObject(0, 0);
         this.objectList[0].scale(20, 1, 20);
 
-        this.addObject(1, 7);
+        this.addObject(3, 7);
         this.objectList[1].translate(1, 0.5, 6);
-        this.objectList[1].scale(0.5, 0.5, 0.5);
+        //this.objectList[1].scale(0.5, 0.5, 0.5);
 
         this.addObject(2, 3);
         this.objectList[2].translate(10, 1, -8);

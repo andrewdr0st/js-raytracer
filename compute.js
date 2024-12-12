@@ -43,8 +43,9 @@ const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
 const normalsSize = 16;
-const objectSize = 176;
-const objectInfoSize = 64;
+const objectSize = 160;
+const objectInfoSize = 48;
+const bvhNodeSize = 32;
 const sphereSize = 32;
 const materialSize = 48;
 
@@ -305,6 +306,10 @@ function createBindGroupLayouts(static) {
                 binding: 5,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
+            }, {
+                binding: 6,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
             }
         ]
     });
@@ -349,13 +354,9 @@ function createBindGroupLayouts(static) {
             }, {
                 binding: 1,
                 visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 2,
-                visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "storage" }
             }, {
-                binding: 3,
+                binding: 2,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
             }
@@ -529,6 +530,7 @@ function createObjectsBindGroup(scene) {
     let uvOffset = 0;
     let nOffset = 0;
     let oOffset = 0;
+    let bOffset = 0;
 
     const triangleBuffer = device.createBuffer({
         label: "triangle buffer",
@@ -588,12 +590,28 @@ function createObjectsBindGroup(scene) {
     for (let i = 0; i < objectCount; i++) {
         let o = objectList[i];
         device.queue.writeBuffer(objectsInfoBuffer, oOffset, o.getTranslate());
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 12, new Int32Array([o.tStart]));
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 12, o.getRootNode());
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 16, o.getScale());
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 28, new Int32Array([o.tEnd]));
+        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 28, o.getMaterial());
         device.queue.writeBuffer(objectsInfoBuffer, oOffset + 32, o.getRotate());
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 48, o.getMaterial());
         oOffset += objectInfoSize;
+    }
+
+    const bvhNodeBuffer = device.createBuffer({
+        label: "bvh node buffer",
+        size: bvhOffset * bvhNodeSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    for (let j = 0; j < meshList.length; j++) {
+        let m = meshList[j];
+        for (let i = 0; i < m.bvhList.length; i++) {
+            let b = m.bvhList[i];
+            device.queue.writeBuffer(bvhNodeBuffer, bOffset, new Float32Array(b.a));
+            device.queue.writeBuffer(bvhNodeBuffer, bOffset + 12, new Uint32Array([b.triCount]));
+            device.queue.writeBuffer(bvhNodeBuffer, bOffset + 16, new Float32Array(b.b));
+            device.queue.writeBuffer(bvhNodeBuffer, bOffset + 28, new Uint32Array([b.index]));
+            bOffset += bvhNodeSize;
+        }
     }
 
     objectsBindGroup = device.createBindGroup({
@@ -605,7 +623,8 @@ function createObjectsBindGroup(scene) {
             { binding: 2, resource: { buffer: triangleUvBuffer } },
             { binding: 3, resource: { buffer: triangleNormalsBuffer } },
             { binding: 4, resource: { buffer: objectsBuffer } },
-            { binding: 5, resource: { buffer: spheresBuffer } }
+            { binding: 5, resource: { buffer: bvhNodeBuffer } },
+            { binding: 6, resource: { buffer: spheresBuffer } }
         ]
     });
 
@@ -613,10 +632,9 @@ function createObjectsBindGroup(scene) {
         label: "transform bind group",
         layout: transformLayout,
         entries: [
-            { binding: 0, resource: { buffer: triangleBuffer } },
-            { binding: 1, resource: { buffer: trianglePointBuffer } },
-            { binding: 2, resource: { buffer: objectsBuffer } },
-            { binding: 3, resource: { buffer: objectsInfoBuffer } }
+            { binding: 0, resource: { buffer: bvhNodeBuffer } },
+            { binding: 1, resource: { buffer: objectsBuffer } },
+            { binding: 2, resource: { buffer: objectsInfoBuffer } }
         ]
     });
 }
