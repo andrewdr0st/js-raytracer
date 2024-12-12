@@ -4,9 +4,9 @@ const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
 const staticRender = false;
-const pixelScaleFactor = 1;
+const pixelScaleFactor = 2;
 
-let debugFramerate = false;
+let debugFramerate = true;
 
 canvas.width = Math.floor(window.innerWidth / pixelScaleFactor) * pixelScaleFactor;
 canvas.height = Math.floor(window.innerHeight / pixelScaleFactor) * pixelScaleFactor;

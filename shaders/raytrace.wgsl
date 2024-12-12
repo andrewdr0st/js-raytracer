@@ -161,7 +161,6 @@ const EPSILON = 0.00001;
                 var ohr = hitBox(obj.bbox1, obj.bbox2, orig, ray, tMax);
 
                 if (ohr.h) {
-                    var tmpTMax = 10000.0;
                     let newO = (obj.tMatInv * vec4f(orig, 1)).xyz;
                     let newR = (obj.tMatInv * vec4f(ray, 0)).xyz;
                     var bp: i32 = 0;
