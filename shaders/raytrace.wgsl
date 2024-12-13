@@ -18,7 +18,9 @@ struct material {
     ri: f32,
     density: f32,
     tex: i32,
-    texArray: i32
+    texArray: i32,
+    matType: u32,
+    fresnel: f32
 };
 
 struct sphere {
@@ -104,6 +106,8 @@ const EPSILON = 0.00001;
         var rayColor = vec3f(1, 1, 1);
         var incomingLight = vec3f(0, 0, 0);
         var pw: f32 = 1.0;
+        var bdrf: f32 = 1.0;
+        var bdrfDone = 0;
 
         if (camera.antiAliasing > 0) {
             let xRand = randomF(&rngState) - 0.5;
@@ -234,11 +238,28 @@ const EPSILON = 0.00001;
                 }
             } else {
                 let matRand = randomF(&rngState);
-                if (hr.m.ri > 0.01) {
+                if (hr.m.matType == 1 && bdrfDone == 0) {
+                    if (a == 0 && hr.m.e < EPSILON) {
+                        let p = sampleSun(&rngState);
+                        let d = p - hr.p;
+                        let dist_squared = dot(d, d);
+                        hr.d = normalize(d);
+                        let cos_theta = dot(hr.d, hr.n);
+                        pw = select(0.0, (cos_theta * sunSurfaceArea) / dist_squared, cos_theta > 0);
+                        importanceRay = true;
+                    } else {
+                        hr.d = hr.n + randomDir(&rngState);
+                    }
+                    hr.d = normalize(hr.d);
+                    bdrf = cookTorranceBDRF(hr.d, -ray, hr.n, hr.m.fuzzFactor, hr.m.fresnel) * dot(hr.d, hr.n);
+                    bdrfDone = 1;
+                } else if (hr.m.ri > 0.01) {
                     let cosTheta = dot(-ray, hr.n);
                     let refractiveRatio = select(hr.m.ri, 1.0 / hr.m.ri, hr.frontFace);
                     let r = refract(ray, hr.n, refractiveRatio);
-                    if (all(r == vec3f(0.0)) || schlick(cosTheta, refractiveRatio) > randomF(&rngState)) {
+                    var r0 = (1 - refractiveRatio) / (1 + refractiveRatio);
+                    r0 = r0 * r0;
+                    if (all(r == vec3f(0.0)) || schlick(cosTheta, r0) > randomF(&rngState)) {
                         hr.d = reflect(ray, hr.n);
                     } else {
                         hr.d = r;
@@ -267,7 +288,7 @@ const EPSILON = 0.00001;
             }
         }
 
-        totalColor += incomingLight;
+        totalColor += incomingLight * bdrf;
     }
 
     totalColor /= f32(rayCount);
@@ -276,7 +297,7 @@ const EPSILON = 0.00001;
     totalColor = sqrt(totalColor);
 
     textureStore(tex, id.xy, vec4f(totalColor, 1));
-    //textureStore(tex, id.xy, vec4f(f32(objects[0].rootNode), f32(bvhNodes[0].triCount), f32(bvhNodes[0].idx), 1));
+    //textureStore(tex, id.xy, vec4f(firstBDRF, 0, 0, 1));
 }
 
 fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> f32 {
@@ -363,10 +384,8 @@ fn hitBox(bbox1: vec3f, bbox2: vec3f, orig: vec3f, dir: vec3f, tMax: f32) -> hit
     return hr;
 }
 
-fn schlick(c: f32, ri: f32) -> f32 {
-    var r0 = (1 - ri) / (1 + ri);
-    r0 = r0 * r0;
-    return r0 + (1 - r0) * pow(1 - c, 5);
+fn schlick(c: f32, fresnel: f32) -> f32 {
+    return fresnel + (1 - fresnel) * pow(1 - c, 5);
 }
 
 fn randomF(state: ptr<function, u32>) -> f32 {
@@ -391,4 +410,31 @@ fn sampleSun(state: ptr<function, u32>) -> vec3f {
     let radius: f32 = s.radius;
     let d = randomDir(state);
     return center + d * radius;
+}
+
+fn cookTorranceBDRF(in: vec3f, out: vec3f, n: vec3f, alpha: f32, fresnel: f32) -> f32 {
+    let h = normalize(in + out);
+    let d = ndf(n, h, alpha);
+    //let g = ggx(in, out, n, alpha);
+    let g = 1.0;
+    let f = schlick(dot(in, h), fresnel);
+    //let f = 1.0;
+    let denominator = max(4.0 * dot(in, n) * dot(out, n), EPSILON);
+    return d * g * f / denominator;
+}
+
+fn ndf(n: vec3f, h: vec3f, alpha: f32) -> f32 {
+    let nh = dot(n, h);
+    let denominator = nh * nh * (alpha - 1.0) + 1.0;
+    return alpha / (PI * denominator * denominator);
+}
+
+fn ggx1(n: vec3f, v: vec3f, alpha: f32) -> f32 {
+    let nv = dot(n, v);
+    let denominator = nv + sqrt(alpha + (1.0 - alpha) * nv * nv);
+    return 2.0 * nv / denominator;
+}
+
+fn ggx(in: vec3f, out: vec3f, n: vec3f, alpha: f32) -> f32 {
+    return ggx1(n, in, alpha) * ggx1(n, out, alpha);
 }

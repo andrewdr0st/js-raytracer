@@ -49,7 +49,7 @@ const bvhNodeSize = 32;
 const sphereSize = 32;
 const materialSize = 48;
 
-const runDenoiser = true;
+const runDenoiser = false;
 const denoisePassCount = 3;
 let stepw = 1.0;
 

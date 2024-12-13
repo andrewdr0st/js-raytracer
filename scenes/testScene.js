@@ -29,19 +29,19 @@ class TestScene extends Scene {
     }
 
     setupObjects() {
-        this.addObject(0, 0);
+        this.addObject(0, 8);
         this.objectList[0].scale(20, 1, 20);
 
         this.addObject(3, 7);
         this.objectList[1].translate(1, 0.5, 6);
         //this.objectList[1].scale(0.5, 0.5, 0.5);
 
-        this.addObject(2, 3);
+        this.addObject(2, 5);
         this.objectList[2].translate(10, 1, -8);
         this.objectList[2].rotate([0, 0, 1], deg2rad(90));
         this.objectList[2].rotate([1, 0, 0], deg2rad(-60));
 
-        this.addObject(1, 5);
+        this.addObject(1, 3);
         this.objectList[3].scale(5, 2, 0.2);
         this.objectList[3].translate(-10, 2, -6);
         this.objectList[3].rotate([1, 0, 0], deg2rad(30));
@@ -64,10 +64,11 @@ class TestScene extends Scene {
         this.materialList.push(new Material(0.2, 0.4, 0.25, 0));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 1.0));
         this.materialList.push(new Material(0.8, 0.8, 0.6, 0, 0.9, 0.1, 0, 1));
-        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0, 0, 1, 1));
+        this.materialList.push(new Material(0.4, 0.65, 0.95, 0, 0, 0.3, 1.4, 1, 1, 0, 1, 0.6));
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
         this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 0, 1));
         this.materialList.push(new Material(0.7, 0.7, 0.7, 0, 0, 0, 0, -1, -1, 1));
         this.materialList.push(new Material(0.9, 0.8, 0.7, 0, 1.0, 0.05));
+        this.materialList.push(new Material(0.6, 0.6, 0.6, 0, 0, 0.02, 2.5, -1, -1, 0, 1, 0.9));
     }
 }
