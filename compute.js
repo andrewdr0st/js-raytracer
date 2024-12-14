@@ -51,7 +51,7 @@ const sphereSize = 32;
 const materialSize = 48;
 
 const runDenoiser = false;
-const denoisePassCount = 3;
+const denoisePassCount = 2;
 let stepw = 1.0;
 
 async function loadWGSLShader(f) {

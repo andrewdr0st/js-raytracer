@@ -18,7 +18,7 @@ class SceneObject {
     }
 
     rotate(axis, theta) {
-        this.rotateQ = qmult(this.rotateQ, axisAngleToQuaternion(axis, theta));
+        this.rotateQ = qmult(this.rotateQ, axisAngleToQuaternion(axis, deg2rad(theta)));
     }
 
     getTranslate() {

@@ -61,5 +61,11 @@ class Camera {
         this.frameCount++;
     }
 
+    setP(x, y, theta) {
+        theta = deg2rad(theta);
+        this.lookTo = [-Math.cos(theta), -0.5, -Math.sin(theta)];
+        this.pos = [x * Math.cos(theta), y, x * Math.sin(theta)];
+    }
+
 }
 

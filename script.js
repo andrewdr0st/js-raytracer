@@ -28,7 +28,7 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let scene = new TestScene();
+let scene = new CowScene();
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -97,6 +97,7 @@ async function loop(currentTime) {
         console.log(1 / deltaTime);
     }
     let camera = scene.camera;
+    camera.setP(12, 7, 0);
 
     if (staticRender) {
         camera.updateStatic();
