@@ -12,6 +12,9 @@ class Camera {
         this.fov = fov;
         this.up = [0, 1, 0];
         this.focusDist = 1.0;
+        this.defocusAngle = 0.15;
+        this.defocusU = [0, 0, 0];
+        this.defocusV = [0, 0, 0];
 
         this.raysPerPixel = 16;
         this.bounceCount = 4;
@@ -47,6 +50,10 @@ class Camera {
         let viewplaneVec = vadd(vdivide(this.viewportU, 2), vdivide(this.viewportV, 2));
         this.viewportUpperLeft = vsub(viewplanePos, viewplaneVec);
         this.topLeftPixel = vadd(this.viewportUpperLeft, vscalar(vadd(this.pixelDeltaU, this.pixelDeltaV), 0.5));
+
+        let defocusRadius = this.focusDist * Math.tan(deg2rad(this.defocusAngle / 2));
+        this.defocusU = vscalar(u, defocusRadius);
+        this.defocusV = vscalar(v, defocusRadius);
     }
 
     updateStatic() {

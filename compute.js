@@ -39,6 +39,7 @@ let transformBindGroup;
 
 let denoiseParamsBuffer;
 
+const cameraUniformSize = 112;
 const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
@@ -105,7 +106,7 @@ async function renderGPU(scene, static=false) {
 
     const cameraBuffer = device.createBuffer({
         label: "camera uniform buffer",
-        size: 80,
+        size: cameraUniformSize,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
     device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera.pos));
@@ -122,9 +123,11 @@ async function renderGPU(scene, static=false) {
     device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(camera.backgroundColor));
 
     if (static) {
-        device.queue.writeBuffer(cameraBuffer, 44, new Int32Array([camera.seed]));
-        device.queue.writeBuffer(cameraBuffer, 60, new Int32Array([camera.frameCount]));
+        device.queue.writeBuffer(cameraBuffer, 60, new Int32Array([camera.seed]));
+        device.queue.writeBuffer(cameraBuffer, 76, new Int32Array([camera.frameCount]));
     }
+    device.queue.writeBuffer(cameraBuffer, 80, new Float32Array(camera.defocusU));
+    device.queue.writeBuffer(cameraBuffer, 96, new Float32Array(camera.defocusV));
 
     const uniformBindGroup = device.createBindGroup({
         layout: uniformLayout,
@@ -174,7 +177,7 @@ async function renderGPU(scene, static=false) {
     }
 
     if (static) {
-        encoder.copyTextureToTexture({texture: raytraceTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
+        encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
     }
 
     const commandBuffer = encoder.finish();
@@ -220,7 +223,7 @@ function createBindGroupLayouts(static) {
                 }, {
                     binding: 1,
                     visibility: GPUShaderStage.COMPUTE,
-                    storageTexture: { format: "rgba8unorm" }
+                    storageTexture: { format: "rgba8unorm", access: "read-only" }
                 }
             ]
         });

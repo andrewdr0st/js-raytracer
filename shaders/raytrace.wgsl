@@ -7,7 +7,9 @@ struct cameraData {
     pixelDeltaU: vec3f,
     antiAliasing: u32,
     pixelDeltaV: vec3f,
-    backgroundColor: vec3f
+    backgroundColor: vec3f,
+    defocusU: vec3f,
+    defocusV: vec3f
 };
 
 struct material {
@@ -109,6 +111,9 @@ const EPSILON = 0.00001;
         var bdrf: f32 = 1.0;
         var bdrfDone = 0;
 
+        let randomC = randomPointInCircle(&rngState);
+        let defocusOrig = camera.pos + randomC.x * camera.defocusU + randomC.y * camera.defocusV;
+
         if (camera.antiAliasing > 0) {
             let xRand = randomF(&rngState) - 0.5;
             let yRand = randomF(&rngState) - 0.5;            
@@ -124,7 +129,7 @@ const EPSILON = 0.00001;
         var importanceRay: bool = false;
 
         var hr: hitRec;
-        hr.p = camera.pos;
+        hr.p = defocusOrig;
         hr.d = pCenter - camera.pos;
 
         for (var b: u32 = 0; b < bounceCount; b++) {
@@ -297,7 +302,7 @@ const EPSILON = 0.00001;
     totalColor = sqrt(totalColor);
 
     textureStore(tex, id.xy, vec4f(totalColor, 1));
-    //textureStore(tex, id.xy, vec4f(firstBDRF, 0, 0, 1));
+    //textureStore(tex, id.xy, vec4f(camera.defocusU, 1));
 }
 
 fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> f32 {
@@ -402,6 +407,12 @@ fn randomDir(state: ptr<function, u32>) -> vec3f {
     let x = sqrt(1 - z * z) * cos(theta);
     let y = sqrt(1 - z * z) * sin(theta);
     return vec3f(x, y, z);
+}
+
+fn randomPointInCircle(state: ptr<function, u32>) -> vec2f {
+    let theta = randomF(state) * PI * 2;
+    let mag = sqrt(randomF(state));
+    return vec2f(cos(theta), sin(theta)) * mag;
 }
 
 fn sampleSun(state: ptr<function, u32>) -> vec3f {

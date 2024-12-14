@@ -1,6 +1,6 @@
 class TestScene extends Scene {
     setupCamera(w, h) {
-        this.camera = new Camera([12, 15, 5], [-1, -0.75, 0], w, h, 90.0);
+        this.camera = new Camera([0, 15, -20], [0, -0.75, 1], w, h, 90.0);
         this.camera.backgroundColor = [0.1, 0.1, 0.1];
         this.camera.bounceCount = 8;
         this.camera.raysPerPixel = 2;
@@ -49,7 +49,7 @@ class TestScene extends Scene {
         //this.addObject(1, 6);
         //this.objectList[4].translate(0, 1, -10);
 
-        let sun = new Sphere(0, 100, -50, 30, this.materialList[1]);
+        let sun = new Sphere(0, 150, -50, 40, this.materialList[1]);
         this.sphereList.push(sun);
 
         let metalBall = new Sphere(-5, 2, 0, 2, this.materialList[2]);
@@ -68,7 +68,7 @@ class TestScene extends Scene {
         this.materialList.push(new Material(1.0, 1.0, 1.0, 0, 0, 0, 1.5));
         this.materialList.push(new Material(0.5, 0.5, 0.6, 0, 0, 0, 0, 0, 1));
         this.materialList.push(new Material(0.7, 0.7, 0.7, 0, 0, 0, 0, -1, -1, 1));
-        this.materialList.push(new Material(0.9, 0.8, 0.7, 0, 1.0, 0.05));
+        this.materialList.push(new Material(0.9, 0.8, 0.7, 0.9, 1.0, 0.05));
         this.materialList.push(new Material(0.6, 0.6, 0.6, 0, 0, 0.02, 2.5, -1, -1, 0, 1, 0.9));
     }
 }

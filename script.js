@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const staticRender = false;
+const staticRender = true;
 const pixelScaleFactor = 1;
 
 let debugFramerate = false;
@@ -106,8 +106,6 @@ async function loop(currentTime) {
         camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
     }
 
-    camera.focusDist += 0.01;
-
     camera.init();
 
     await runGPUThing();
@@ -118,29 +116,22 @@ async function loop(currentTime) {
 }
 
 async function initGPU() {
-    if (staticRender) {
-        if (await setupGPUDeviceStaticRender(tempCanvas)) {
-            await scene.setup(w, h);
-            requestAnimationFrame(loop);
-        }
-    } else {
-        if (await setupGPUDevice(tempCanvas)) {
-            await scene.setup(w, h);
+    if (await setupGPUDevice(tempCanvas, staticRender)) {
+        await scene.setup(w, h);
+        if (staticRender) {
+            scene.camera.realtimeMode = false;
+        } else {
             scene.camera.pos = [0, 1, 0];
-            scene.camera.antialiasing = true;
-            setupBindGroups(scene);
-            await calculateTransforms(scene);
-            requestAnimationFrame(loop);
         }
+        scene.camera.antialiasing = true;
+        setupBindGroups(scene);
+        await calculateTransforms(scene);
+        requestAnimationFrame(loop);
     }
 }
 
 async function runGPUThing() {
-    if (staticRender) {
-        await renderGPUStatic(scene);
-    } else {
-        await renderGPU(scene);
-    }
+    await renderGPU(scene, staticRender);
 }
 
 initGPU();
