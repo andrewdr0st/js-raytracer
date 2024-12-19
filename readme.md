@@ -1,3 +1,3 @@
-# Raytracer in JS
+# JS Ray Tracer
 
-Browser-based raytracer using JS and WebGPU compute shaders.
+Real-time, Browser-based ray tracer using WebGPU and compute shaders.
