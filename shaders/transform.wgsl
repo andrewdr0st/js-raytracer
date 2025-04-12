@@ -24,7 +24,6 @@ struct bvhNode {
 
 const EPSILON = 0.0001;
 const EPSILONV = vec3f(EPSILON, EPSILON, EPSILON);
-const HUGE = 100000.0;
 
 @group(0) @binding(0) var<storage, read> bvhNodes: array<bvhNode>;
 @group(0) @binding(1) var<storage, read_write> objects: array<object>;
