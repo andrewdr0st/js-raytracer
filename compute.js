@@ -5,6 +5,7 @@ let raytracePipeline;
 let npPipeline;
 let denoisePipeline;
 let transformPipeline;
+let infPipeline;
 
 let computeContext;
 let raytraceTexture;
@@ -138,6 +139,14 @@ async function renderGPU(scene, static=false) {
 
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
 
+    const pass = encoder.beginComputePass({label: "inf pass"});
+    pass.setPipeline(infPipeline);
+    pass.setBindGroup(0, uniformBindGroup);
+    pass.setBindGroup(1, raytraceTextureBindGroup);
+    pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
+    pass.end();
+
+    /*
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
 
     pass.setPipeline(raytracePipeline);
@@ -179,6 +188,7 @@ async function renderGPU(scene, static=false) {
     if (static) {
         encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
     }
+        */
 
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);
@@ -386,6 +396,12 @@ async function createPipelines(static) {
         code: denoiseCode
     });
 
+    let infCode = await loadWGSLShader("inftrace.wgsl");
+    const infModule = device.createShaderModule({
+        label: "inf module",
+        code: infCode
+    });
+
     let transformCode = await loadWGSLShader("transform.wgsl");
     const transformModule = device.createShaderModule({
         label: "transform module",
@@ -407,6 +423,22 @@ async function createPipelines(static) {
         layout: raytracePipelineLayout,
         compute: {
             module: raytraceModule
+        }
+    });
+
+    const infPipelineLayout = device.createPipelineLayout({
+        label: "inf pipeline layout",
+        bindGroupLayouts: [
+            uniformLayout,
+            raytraceTextureLayout
+        ]
+    });
+
+    infPipeline = device.createComputePipeline({
+        label: "inf pipeline",
+        layout: infPipelineLayout,
+        compute: {
+            module: infModule
         }
     });
 

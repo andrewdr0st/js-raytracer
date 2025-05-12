@@ -28,7 +28,7 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let scene = new TestScene();
+let scene = new InfScene();
 
 let cameraFVel = 0;
 let cameraRVel = 0;
@@ -121,11 +121,11 @@ async function initGPU() {
         if (staticRender) {
             scene.camera.realtimeMode = false;
         } else {
-            scene.camera.pos = [0, 1, 0];
+            //scene.camera.pos = [0, 1, 0];
         }
         scene.camera.antialiasing = true;
         setupBindGroups(scene);
-        await calculateTransforms(scene);
+        //await calculateTransforms(scene);
         requestAnimationFrame(loop);
     }
 }
