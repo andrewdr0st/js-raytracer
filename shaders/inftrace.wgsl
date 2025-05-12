@@ -20,30 +20,52 @@ struct cameraData {
         return;
     }
 
-    let radius = 0.6;
+    let radius = 0.35;
+    let center = vec3f(0.5, 0.5, 0.5);
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-    let dir = pCenter - camera.pos;
+    let dir = normalize(pCenter - camera.pos);
     var col = vec3f(0.5, 0.75, 0.95);
     
     let tplane = hitPlane(vec3f(0, 1, 0), vec3f(0, 1, 0), pCenter, dir);
 
     if (tplane > 0.1) {
         let pplane = pCenter + dir * tplane;
-        let orig = vec3f(modulo(pplane.x + 1, 2) - 1, 1, modulo(pplane.z + 1, 2) - 1);
-        let root = hitSphere(vec3f(0, 0, 0), radius, orig, dir, 0.1, 1000);
-        if (root < 1000 && root > 0.1) {
-            let point = dir * root + orig;
-            let normal = point / radius;
-            let diffuse = max(0.05, dot(normal, vec3f(0, 1, 0)));
-            col = vec3f(0.95, 0.45, 0.25) * diffuse;
+        var orig = vec3f(fract(pplane.x), 1, fract(pplane.z));
+        for (var i: u32 = 0; i < 64; i++) {
+            let root = hitSphere(center, radius, orig, dir, 0.001, 1000);
+            if (root < 1000 && root > 0.001) {
+                let point = dir * root + orig;
+                let normal = (point - center) / radius;
+                let diffuse = max(0.05, dot(normal, vec3f(0, 1, 0)));
+                col = vec3f(0.95, 0.35, 0.25) * diffuse;
+                break;
+            }
+            orig = nextStep(orig, dir);
         }
     }
     
     textureStore(tex, id.xy, vec4f(col, 1));
 }
 
-fn modulo(a: f32, b: f32) -> f32 {
-    return a - b * (floor(a / b));
+fn nextStep(orig: vec3f, dir: vec3f) -> vec3f {
+    let t = step(vec3f(0, 0, 0), dir);
+    let p = step(dir, vec3f(0, 0, 0));
+    let n = t - orig;
+    let d = n / dir;
+    let m = min(min(d.x, d.y), d.z) * dir;
+    var o = orig + m;
+    if (d.x < d.y) {
+        if (d.x < d.z) {
+            o.x = p.x;
+        } else {
+            o.z = p.z;
+        }
+    } else if (d.y < d.z) {
+        o.y = p.y;
+    } else {
+        o.z = p.z;
+    }
+    return o;
 }
 
 fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> f32 {
