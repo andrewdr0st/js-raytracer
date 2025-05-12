@@ -20,6 +20,8 @@ struct cameraData {
         return;
     }
 
+    let tMin = 0.00001;
+    let tMax = 2500.0;
     let radius = 0.35;
     let center = vec3f(0.5, 0.5, 0.5);
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
@@ -28,28 +30,31 @@ struct cameraData {
     
     let tplane = hitPlane(vec3f(0, 1, 0), vec3f(0, 1, 0), pCenter, dir);
 
-    if (tplane > 0.1) {
+    if (tplane > tMin) {
         let pplane = pCenter + dir * tplane;
         var orig = vec3f(fract(pplane.x), 1, fract(pplane.z));
+        var gridPos = vec3i(i32(floor(pplane.x)), 1, i32(floor(pplane.z)));
         for (var i: u32 = 0; i < 64; i++) {
-            let root = hitSphere(center, radius, orig, dir, 0.001, 1000);
-            if (root < 1000 && root > 0.001) {
+            let root = hitSphere(center, radius, orig, dir, tMin, tMax);
+            if (root < tMax && root > tMin) {
                 let point = dir * root + orig;
                 let normal = (point - center) / radius;
                 let diffuse = max(0.05, dot(normal, vec3f(0, 1, 0)));
-                col = vec3f(0.95, 0.35, 0.25) * diffuse;
+                var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
+                col = vec3f(randomF(&state), randomF(&state), randomF(&state)) * diffuse;
                 break;
             }
-            orig = nextStep(orig, dir);
+            orig = nextStep(orig, dir, &gridPos);
         }
     }
     
     textureStore(tex, id.xy, vec4f(col, 1));
 }
 
-fn nextStep(orig: vec3f, dir: vec3f) -> vec3f {
+fn nextStep(orig: vec3f, dir: vec3f, gridPos: ptr<function, vec3i>) -> vec3f {
     let t = step(vec3f(0, 0, 0), dir);
     let p = step(dir, vec3f(0, 0, 0));
+    let c = ceil(abs(dir)) * sign(dir);
     let n = t - orig;
     let d = n / dir;
     let m = min(min(d.x, d.y), d.z) * dir;
@@ -57,13 +62,17 @@ fn nextStep(orig: vec3f, dir: vec3f) -> vec3f {
     if (d.x < d.y) {
         if (d.x < d.z) {
             o.x = p.x;
+            (*gridPos).x += i32(c.x);
         } else {
             o.z = p.z;
+            (*gridPos).z += i32(c.z);
         }
     } else if (d.y < d.z) {
         o.y = p.y;
+        (*gridPos).y += i32(c.y);
     } else {
         o.z = p.z;
+        (*gridPos).z += i32(c.z);
     }
     return o;
 }
@@ -94,3 +103,20 @@ fn hitPlane(n: vec3f, p: vec3f, orig: vec3f, dir: vec3f) -> f32 {
     return numerator / denominator;
 }
 
+fn randomF(state: ptr<function, u32>) -> f32 {
+    let s = (*state) * 747796405 + 2891336453;
+    *state = s;
+    var result = ((s >> ((s >> 28) + 4)) ^ s) * 277803737;
+    result = (result >> 22) ^ result;
+    return f32(result) / 4294967295.0;
+}
+
+fn wangHash(x: u32, y: u32, z: u32) -> u32 {
+    var seed: u32 = x * 1664525u + y * 1013904223u + z * 374761393u;
+    seed ^= (seed >> 16u);
+    seed *= 2246822519u;
+    seed ^= (seed >> 13u);
+    seed *= 3266489917u;
+    seed ^= (seed >> 16u);
+    return seed;
+}
