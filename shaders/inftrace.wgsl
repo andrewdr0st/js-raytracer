@@ -25,29 +25,47 @@ struct cameraData {
     let radius = 0.35;
     let center = vec3f(0.5, 0.5, 0.5);
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-    let dir = normalize(pCenter - camera.pos);
-    var col = vec3f(0.5, 0.75, 0.95);
+    let sky = vec3f(0.45, 0.6, 0.85);
+    var dir = normalize(pCenter - camera.pos);
+    var col = vec3f(1, 1, 1);
     
     let tplane = hitPlane(vec3f(0, 1, 0), vec3f(0, 1, 0), pCenter, dir);
+    var hit = 0;
 
     if (tplane > tMin) {
         let pplane = pCenter + dir * tplane;
         var orig = vec3f(fract(pplane.x), 1, fract(pplane.z));
         var gridPos = vec3i(i32(floor(pplane.x)), 1, i32(floor(pplane.z)));
-        for (var i: u32 = 0; i < 64; i++) {
+        for (var i: u32 = 0; i < 128; i++) {
             let root = hitSphere(center, radius, orig, dir, tMin, tMax);
             if (root < tMax && root > tMin) {
+                hit = 1;
                 let point = dir * root + orig;
                 let normal = (point - center) / radius;
                 let diffuse = max(0.05, dot(normal, vec3f(0, 1, 0)));
                 var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
-                col = vec3f(randomF(&state), randomF(&state), randomF(&state)) * diffuse;
-                break;
+                if (randomF(&state) < 0.1) {
+                    orig = point;
+                    dir = reflect(dir, normal);
+                    col *= vec3f(randomF(&state));
+                } else {
+                    col *= vec3f(randomF(&state), randomF(&state), randomF(&state)) * diffuse;
+                    break;
+                }
             }
             orig = nextStep(orig, dir, &gridPos);
+            if (gridPos.y > 1) {
+                col *= sky + vec3f(1) * max(0, dot(dir, vec3f(0, 1, 0))) * 0.75;
+                break;
+            }
         }
     }
+
+    if (hit == 0) {
+        col = sky;
+    }
     
+    col = pow(col, vec3f(0.454545));
     textureStore(tex, id.xy, vec4f(col, 1));
 }
 
