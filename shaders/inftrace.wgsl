@@ -22,46 +22,66 @@ struct cameraData {
 
     let tMin = 0.00001;
     let tMax = 2500.0;
-    let radius = 0.35;
+    //let radius = 0.35;
     let center = vec3f(0.5, 0.5, 0.5);
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
+    //let lightDir = vec3f(0, 1, 0);
+    let lightDir = vec3f(0.0990148, 0.990148, 0.0990148);
     let sky = vec3f(0.45, 0.6, 0.85);
+    let lightFalloff = 1.35;
     var dir = normalize(pCenter - camera.pos);
     var col = vec3f(1, 1, 1);
     
     let tplane = hitPlane(vec3f(0, 1, 0), vec3f(0, 1, 0), pCenter, dir);
-    var hit = 0;
+    var hit = false;
+    var inside = false;
 
     if (tplane > tMin) {
         let pplane = pCenter + dir * tplane;
         var orig = vec3f(fract(pplane.x), 1, fract(pplane.z));
         var gridPos = vec3i(i32(floor(pplane.x)), 1, i32(floor(pplane.z)));
         for (var i: u32 = 0; i < 128; i++) {
+            var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
+            let radius = randomF(&state) * 0.125 + 0.3;
             let root = hitSphere(center, radius, orig, dir, tMin, tMax);
             if (root < tMax && root > tMin) {
-                hit = 1;
+                hit = true;
                 let point = dir * root + orig;
                 let normal = (point - center) / radius;
-                let diffuse = max(0.05, dot(normal, vec3f(0, 1, 0)));
-                var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
-                if (randomF(&state) < 0.1) {
+                let material = randomF(&state);
+                /*if (material > 0.975) {
+                    //let n = select(normal, -normal, inside);
+                    //let cosTheta = dot(-dir, normal);
+                    //let refractiveRatio = select(1.3, 0.76923, inside);
+                    dir = refract(dir, normal, 0.76923);
+                    var r0 = (1 - refractiveRatio) / (1 + refractiveRatio);
+                    r0 = r0 * r0;
+                    if (all(r == vec3f(0.0)) || schlick(cosTheta, r0) > randomF(&state)) {
+                        dir = reflect(dir, n);
+                        orig = point;
+                    } else {}
+                    orig += dir * radius;
+                    dir = refract(dir, -normal, 1.3);
+                } else */
+                if (material < 0.1) {
                     orig = point;
                     dir = reflect(dir, normal);
                     col *= vec3f(randomF(&state));
                 } else {
+                    let diffuse = max(0.05, dot(normal, lightDir) * pow(lightFalloff, f32(gridPos.y - 1)));
                     col *= vec3f(randomF(&state), randomF(&state), randomF(&state)) * diffuse;
                     break;
                 }
             }
             orig = nextStep(orig, dir, &gridPos);
             if (gridPos.y > 1) {
-                col *= sky + vec3f(1) * max(0, dot(dir, vec3f(0, 1, 0))) * 0.75;
+                col *= sky + vec3f(1) * max(0, dot(dir, lightDir)) * 0.75;
                 break;
             }
         }
     }
 
-    if (hit == 0) {
+    if (!hit) {
         col = sky;
     }
     
@@ -119,6 +139,10 @@ fn hitPlane(n: vec3f, p: vec3f, orig: vec3f, dir: vec3f) -> f32 {
     }
     let numerator = dot(-n, orig - p);
     return numerator / denominator;
+}
+
+fn schlick(c: f32, fresnel: f32) -> f32 {
+    return fresnel + (1 - fresnel) * pow(1 - c, 5);
 }
 
 fn randomF(state: ptr<function, u32>) -> f32 {
