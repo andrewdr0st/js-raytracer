@@ -184,11 +184,11 @@ async function renderGPU(scene, static=false) {
             }
         }
     }
-
+    */
     if (static) {
         encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
     }
-        */
+    
 
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);
@@ -396,7 +396,7 @@ async function createPipelines(static) {
         code: denoiseCode
     });
 
-    let infCode = await loadWGSLShader("inftrace.wgsl");
+    let infCode = await loadWGSLShader(static ? "inftracestatic.wgsl" : "inftrace.wgsl");
     const infModule = device.createShaderModule({
         label: "inf module",
         code: infCode

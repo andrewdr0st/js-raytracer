@@ -32,7 +32,7 @@ let scene = new InfScene();
 
 let cameraFVel = 0;
 let cameraRVel = 0;
-let moveSpeed = 1.5;
+let moveSpeed = 10.5;
 
 let cameraTheta = Math.PI;
 let cameraPhi = 0;

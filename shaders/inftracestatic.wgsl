@@ -6,87 +6,76 @@ struct cameraData {
     pixelDeltaU: vec3f,
     antiAliasing: u32,
     pixelDeltaV: vec3f,
+    randomSeed: u32,
     backgroundColor: vec3f,
+    frameCount: u32,
     defocusU: vec3f,
     defocusV: vec3f
 };
 
+const PI = 3.14159265359;
+
 @group(0) @binding(0) var<uniform> camera: cameraData;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
-
+@group(1) @binding(1) var prevTex: texture_storage_2d<rgba8unorm, read>;
 
 @compute @workgroup_size(8, 8, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
     if (id.x > textureDimensions(tex).x || id.y > textureDimensions(tex).y) {
         return;
     }
 
+    var rngState = ((id.x * 2167) ^ (id.y * 31802381)) + (camera.randomSeed * camera.frameCount * 1401);
+
     let tMin = 0.00001;
     let tMax = 2500.0;
-    //let radius = 0.35;
     let center = vec3f(0.5, 0.5, 0.5);
-    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-    //let lightDir = vec3f(0, 1, 0);
-    let lightDir = vec3f(0.0990148, 0.990148, 0.0990148);
-    let sky = vec3f(0.45, 0.6, 0.85);
-    let lightFalloff = 1.35;
+    let xRand = randomF(&rngState) - 0.5;
+    let yRand = randomF(&rngState) - 0.5;            
+    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * (f32(id.x) - xRand) + camera.pixelDeltaV * (f32(id.y) - yRand);
+    let sky = vec3f(0.01, 0.02, 0.06);
+
     var dir = normalize(pCenter - camera.pos);
     var col = vec3f(1, 1, 1);
     
-    let tplane = hitPlane(vec3f(0, 1, 0), vec3f(0, 1, 0), pCenter, dir);
-    var hit = false;
-    var inside = false;
-
-    if (tplane > tMin) {
-        let pplane = pCenter + dir * tplane;
-        var orig = vec3f(fract(pplane.x), 1, fract(pplane.z));
-        var gridPos = vec3i(i32(floor(pplane.x)), 1, i32(floor(pplane.z)));
-        for (var i: u32 = 0; i < 256; i++) {
-            var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
-            let radius = randomF(&state) * 0.125 + 0.3;
+    var hitLight = false;
+    var orig = vec3f(0, 0, 0);
+    var gridPos = vec3i(0, 7, 0);
+    for (var i: u32 = 0; i < 128; i++) {
+        var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
+        if(randomF(&state) < 0.7) {
+            let radius = randomF(&state) * 0.35 + 0.1;
             let root = hitSphere(center, radius, orig, dir, tMin, tMax);
             if (root < tMax && root > tMin) {
-                hit = true;
                 let point = dir * root + orig;
                 let normal = (point - center) / radius;
                 let material = randomF(&state);
-                /*if (material > 0.975) {
-                    //let n = select(normal, -normal, inside);
-                    //let cosTheta = dot(-dir, normal);
-                    //let refractiveRatio = select(1.3, 0.76923, inside);
-                    dir = refract(dir, normal, 0.76923);
-                    var r0 = (1 - refractiveRatio) / (1 + refractiveRatio);
-                    r0 = r0 * r0;
-                    if (all(r == vec3f(0.0)) || schlick(cosTheta, r0) > randomF(&state)) {
-                        dir = reflect(dir, n);
-                        orig = point;
-                    } else {}
-                    orig += dir * radius;
-                    dir = refract(dir, -normal, 1.3);
-                } else */
-                if (material < 0.1) {
+                if (material < 0.015) {
+                    hitLight = true;
+                    col *= 4;
+                    break;
+                } else if (material < 0.1) {
                     orig = point;
                     dir = reflect(dir, normal);
                     col *= vec3f(randomF(&state));
                 } else {
-                    let diffuse = max(0.05, dot(normal, lightDir) * pow(lightFalloff, f32(gridPos.y - 1)));
-                    col *= vec3f(randomF(&state), randomF(&state), randomF(&state)) * diffuse;
-                    break;
+                    orig = point;
+                    dir = normalize(normal + randomDir(&rngState));
+                    col *= vec3f(randomF(&state), randomF(&state), randomF(&state));
                 }
             }
-            orig = nextStep(orig, dir, &gridPos);
-            if (gridPos.y > 1) {
-                col *= sky + vec3f(1) * max(0, dot(dir, lightDir)) * 0.75;
-                break;
-            }
         }
+        orig = nextStep(orig, dir, &gridPos);
     }
 
-    if (!hit) {
-        col = sky;
+    if (!hitLight) {
+        col *= sky;
     }
     
     col = pow(col, vec3f(0.454545));
-    textureStore(tex, id.xy, vec4f(col, 1));
+    let prevColor = textureLoad(prevTex, id.xy);
+    let cFactor = 1 / f32(camera.frameCount);
+    let totalColor = mix(prevColor.rgb, col, cFactor);
+    textureStore(tex, id.xy, vec4f(totalColor, 1));
 }
 
 fn nextStep(orig: vec3f, dir: vec3f, gridPos: ptr<function, vec3i>) -> vec3f {
@@ -132,17 +121,12 @@ fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f3
     return root;
 }
 
-fn hitPlane(n: vec3f, p: vec3f, orig: vec3f, dir: vec3f) -> f32 {
-    let denominator = dot(n, dir);
-    if (abs(denominator) < 0.00001) {
-        return -1.0;
-    }
-    let numerator = dot(-n, orig - p);
-    return numerator / denominator;
-}
-
-fn schlick(c: f32, fresnel: f32) -> f32 {
-    return fresnel + (1 - fresnel) * pow(1 - c, 5);
+fn randomDir(state: ptr<function, u32>) -> vec3f {
+    let theta = randomF(state) * PI;
+    let z = randomF(state) * 2 - 1.0;
+    let x = sqrt(1 - z * z) * cos(theta);
+    let y = sqrt(1 - z * z) * sin(theta);
+    return vec3f(x, y, z);
 }
 
 fn randomF(state: ptr<function, u32>) -> f32 {
