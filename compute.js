@@ -126,6 +126,8 @@ async function renderGPU(scene, static=false) {
     if (static) {
         device.queue.writeBuffer(cameraBuffer, 60, new Int32Array([camera.seed]));
         device.queue.writeBuffer(cameraBuffer, 76, new Int32Array([camera.frameCount]));
+        device.queue.writeBuffer(cameraBuffer, 92, new Uint32Array([camera.gridX]));
+        device.queue.writeBuffer(cameraBuffer, 108, new Uint32Array([camera.gridY]));
     }
     device.queue.writeBuffer(cameraBuffer, 80, new Float32Array(camera.defocusU));
     device.queue.writeBuffer(cameraBuffer, 96, new Float32Array(camera.defocusV));
@@ -143,7 +145,8 @@ async function renderGPU(scene, static=false) {
     pass.setPipeline(infPipeline);
     pass.setBindGroup(0, uniformBindGroup);
     pass.setBindGroup(1, raytraceTextureBindGroup);
-    pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
+    //pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
+    pass.dispatchWorkgroups(camera.gridStepX, camera.gridStepY);
     pass.end();
 
     /*

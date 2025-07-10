@@ -98,9 +98,7 @@ async function loop(currentTime) {
     }
     let camera = scene.camera;
 
-    if (staticRender) {
-        camera.updateStatic();
-    } else {
+    if (!staticRender) {
         let moveVec = vnorm(vadd(vscalar(camera.forward, cameraFVel), vscalar(camera.right, cameraRVel)));
         camera.pos = vadd(camera.pos, vscalar(moveVec, deltaTime * moveSpeed));
         camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
@@ -111,6 +109,10 @@ async function loop(currentTime) {
     await runGPUThing();
 
     ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+
+    if (staticRender) {
+        camera.updateStatic();
+    } 
 
     requestAnimationFrame(loop);
 }
@@ -124,6 +126,7 @@ async function initGPU() {
             //scene.camera.pos = [0, 1, 0];
         }
         scene.camera.antialiasing = true;
+        console.log(scene.camera);
         setupBindGroups(scene);
         //await calculateTransforms(scene);
         requestAnimationFrame(loop);

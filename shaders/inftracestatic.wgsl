@@ -10,7 +10,9 @@ struct cameraData {
     backgroundColor: vec3f,
     frameCount: u32,
     defocusU: vec3f,
-    defocusV: vec3f
+    gridX: u32,
+    defocusV: vec3f,
+    gridY: u32
 };
 
 const PI = 3.14159265359;
@@ -20,62 +22,67 @@ const PI = 3.14159265359;
 @group(1) @binding(1) var prevTex: texture_storage_2d<rgba8unorm, read>;
 
 @compute @workgroup_size(8, 8, 1) fn rayColor(@builtin(global_invocation_id) id: vec3u) {
-    if (id.x > textureDimensions(tex).x || id.y > textureDimensions(tex).y) {
+    let idx = id.x + camera.gridX;
+    let idy = id.y + camera.gridY;
+    if (idx > textureDimensions(tex).x || idy > textureDimensions(tex).y) {
         return;
     }
 
-    var rngState = ((id.x * 2167) ^ (id.y * 31802381)) + (camera.randomSeed * camera.frameCount * 1401);
+    var rngState = ((idx * 2167) ^ (idy * 31802381)) + (camera.randomSeed * camera.frameCount * 1401);
 
     let tMin = 0.00001;
     let tMax = 2500.0;
     let center = vec3f(0.5, 0.5, 0.5);
-    let xRand = randomF(&rngState) - 0.5;
-    let yRand = randomF(&rngState) - 0.5;            
-    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * (f32(id.x) - xRand) + camera.pixelDeltaV * (f32(id.y) - yRand);
     let sky = vec3f(0.01, 0.02, 0.06);
-
-    var dir = normalize(pCenter - camera.pos);
-    var col = vec3f(1, 1, 1);
+    var totalCol = vec3f(0);
     
-    var hitLight = false;
-    var orig = vec3f(0, 0, 0);
-    var gridPos = vec3i(0, 7, 0);
-    for (var i: u32 = 0; i < 128; i++) {
-        var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
-        if(randomF(&state) < 0.7) {
-            let radius = randomF(&state) * 0.35 + 0.1;
-            let root = hitSphere(center, radius, orig, dir, tMin, tMax);
-            if (root < tMax && root > tMin) {
-                let point = dir * root + orig;
-                let normal = (point - center) / radius;
-                let material = randomF(&state);
-                if (material < 0.015) {
-                    hitLight = true;
-                    col *= 4;
-                    break;
-                } else if (material < 0.1) {
+    for (var count: u32 = 0; count < camera.raysPerPixel; count++) {
+        let xRand = randomF(&rngState) - 0.5;
+        let yRand = randomF(&rngState) - 0.5;            
+        let pCenter = camera.topLeftPixel + camera.pixelDeltaU * (f32(idx) - xRand) + camera.pixelDeltaV * (f32(idy) - yRand);
+        var orig = vec3f(0, 0, 0);
+        var dir = normalize(pCenter - camera.pos);
+        var col = vec3f(1, 1, 1);
+        var hitLight = false;
+        var gridPos = vec3i(0, 7, 0);
+        for (var i: u32 = 0; i < 128; i++) {
+            var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
+            if(randomF(&state) < 0.7) {
+                let radius = randomF(&state) * 0.35 + 0.1;
+                let root = hitSphere(center, radius, orig, dir, tMin, tMax);
+                if (root < tMax && root > tMin) {
+                    let point = dir * root + orig;
+                    let normal = (point - center) / radius;
+                    let material = randomF(&state);
+                    if (material < 0.015) {
+                        hitLight = true;
+                        //col *= 2;
+                        break;
+                    } else if (material < 0.1) {
+                        dir = reflect(dir, normal);
+                        col *= vec3f(randomF(&state));
+                    } else {
+                        dir = normalize(normal + randomDir(&rngState));
+                        col *= vec3f(randomF(&state), randomF(&state), randomF(&state));
+                    }
                     orig = point;
-                    dir = reflect(dir, normal);
-                    col *= vec3f(randomF(&state));
-                } else {
-                    orig = point;
-                    dir = normalize(normal + randomDir(&rngState));
-                    col *= vec3f(randomF(&state), randomF(&state), randomF(&state));
                 }
             }
+            orig = nextStep(orig, dir, &gridPos);
         }
-        orig = nextStep(orig, dir, &gridPos);
+        if (!hitLight) {
+            col *= sky;
+        }
+        totalCol += col;
     }
 
-    if (!hitLight) {
-        col *= sky;
-    }
-    
-    col = pow(col, vec3f(0.454545));
-    let prevColor = textureLoad(prevTex, id.xy);
+    totalCol /= f32(camera.raysPerPixel);
+    totalCol = pow(totalCol, vec3f(0.454545));
+    let texpos = vec2u(idx, idy);
+    let prevColor = textureLoad(prevTex, texpos);
     let cFactor = 1 / f32(camera.frameCount);
-    let totalColor = mix(prevColor.rgb, col, cFactor);
-    textureStore(tex, id.xy, vec4f(totalColor, 1));
+    let totalColor = mix(prevColor.rgb, totalCol, cFactor);
+    textureStore(tex, texpos, vec4f(totalColor, 1));
 }
 
 fn nextStep(orig: vec3f, dir: vec3f, gridPos: ptr<function, vec3i>) -> vec3f {

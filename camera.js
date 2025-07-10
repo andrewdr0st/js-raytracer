@@ -16,6 +16,11 @@ class Camera {
         this.defocusU = [0, 0, 0];
         this.defocusV = [0, 0, 0];
 
+        this.gridX = 0;
+        this.gridStepX = 16;
+        this.gridY = 0;
+        this.gridStepY = 2;
+
         this.raysPerPixel = 16;
         this.bounceCount = 4;
         this.antialiasing = false;
@@ -57,8 +62,16 @@ class Camera {
     }
 
     updateStatic() {
-        this.seed += 7;
-        this.frameCount++;
+        this.gridX += 8 * this.gridStepX;
+        if (this.gridX >= this.imgW) {
+            this.gridX = 0;
+            this.gridY += 8 * this.gridStepY;
+            if (this.gridY >= this.imgH) {
+                this.gridY = 0;
+                this.seed += 7;
+                this.frameCount++;
+            }
+        }
     }
 
     setP(x, y, theta) {
