@@ -45,7 +45,7 @@ const PI = 3.14159265359;
         var col = vec3f(1, 1, 1);
         var hitLight = false;
         var gridPos = vec3i(0, 7, 0);
-        for (var i: u32 = 0; i < 128; i++) {
+        for (var i: u32 = 0; i < camera.bounceCount; i++) {
             var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
             if(randomF(&state) < 0.7) {
                 let radius = randomF(&state) * 0.35 + 0.1;

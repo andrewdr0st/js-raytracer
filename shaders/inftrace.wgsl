@@ -40,7 +40,7 @@ struct cameraData {
         let pplane = pCenter + dir * tplane;
         var orig = vec3f(fract(pplane.x), 1, fract(pplane.z));
         var gridPos = vec3i(i32(floor(pplane.x)), 1, i32(floor(pplane.z)));
-        for (var i: u32 = 0; i < 256; i++) {
+        for (var i: u32 = 0; i < camera.bounceCount; i++) {
             var state = wangHash(u32(gridPos.x), u32(gridPos.y), u32(gridPos.z));
             let radius = randomF(&state) * 0.125 + 0.3;
             let root = hitSphere(center, radius, orig, dir, tMin, tMax);

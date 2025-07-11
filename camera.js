@@ -17,9 +17,9 @@ class Camera {
         this.defocusV = [0, 0, 0];
 
         this.gridX = 0;
-        this.gridStepX = 16;
+        this.gridStepX = 1;
         this.gridY = 0;
-        this.gridStepY = 2;
+        this.gridStepY = 1;
 
         this.raysPerPixel = 16;
         this.bounceCount = 4;
