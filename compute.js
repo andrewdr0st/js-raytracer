@@ -46,6 +46,8 @@ let transformBindGroup;
 let queueBindGroup;
 
 let denoiseParamsBuffer;
+let headerBuffer;
+let dispatchBuffer;
 
 const cameraUniformSize = 128;
 const triangleSize = 48;
@@ -164,13 +166,49 @@ async function renderGPU(scene, static=false) {
     pass.end();
     */
 
-    const pass = encoder.beginComputePass({label: "wavefront pass"});
-    pass.setPipeline(spawnPipeline);
-    pass.setBindGroup(0, uniformBindGroup);
-    pass.setBindGroup(1, raytraceTextureBindGroup);
-    pass.setBindGroup(2, queueBindGroup);
-    pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
-    pass.end();
+    const spawnPass = encoder.beginComputePass({label: "spawn pass"});
+    spawnPass.setPipeline(spawnPipeline);
+    spawnPass.setBindGroup(0, uniformBindGroup);
+    spawnPass.setBindGroup(1, raytraceTextureBindGroup);
+    spawnPass.setBindGroup(2, queueBindGroup);
+    spawnPass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
+    spawnPass.end();
+
+    const qpass1 = encoder.beginComputePass({label: "queue pass"});
+    qpass1.setPipeline(dispatchPipeline);
+    qpass1.setBindGroup(0, uniformBindGroup);
+    qpass1.setBindGroup(1, raytraceTextureBindGroup);
+    qpass1.setBindGroup(2, queueBindGroup);
+    qpass1.dispatchWorkgroups(2);
+    qpass1.end();
+
+    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+
+    const intersectPass = encoder.beginComputePass({label: "intersect pass"});
+    intersectPass.setPipeline(intersectPipeline);
+    intersectPass.setBindGroup(0, uniformBindGroup);
+    intersectPass.setBindGroup(1, raytraceTextureBindGroup);
+    intersectPass.setBindGroup(2, queueBindGroup);
+    intersectPass.dispatchWorkgroupsIndirect(dispatchBuffer, 0);
+    intersectPass.end();
+
+    const qpass2 = encoder.beginComputePass({label: "queue pass"});
+    qpass2.setPipeline(dispatchPipeline);
+    qpass2.setBindGroup(0, uniformBindGroup);
+    qpass2.setBindGroup(1, raytraceTextureBindGroup);
+    qpass2.setBindGroup(2, queueBindGroup);
+    qpass2.dispatchWorkgroups(2);
+    qpass2.end();
+
+    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+
+    const shadePass = encoder.beginComputePass({label: "shade pass"});
+    shadePass.setPipeline(shadePipeline);
+    shadePass.setBindGroup(0, uniformBindGroup);
+    shadePass.setBindGroup(1, raytraceTextureBindGroup);
+    shadePass.setBindGroup(2, queueBindGroup);
+    shadePass.dispatchWorkgroupsIndirect(dispatchBuffer, 0);
+    shadePass.end();
 
     /*
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
@@ -825,7 +863,13 @@ function createMaterialsBindGroup(materialList) {
 }
 
 function createQueueBindGroup() {
-    const headerBuffer = device.createBuffer({
+    dispatchBuffer = device.createBuffer({
+        label: "dispatch buffer",
+        size: queueHeaderSize * 2,
+        usage: GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_DST
+    });
+
+    headerBuffer = device.createBuffer({
         label: "header buffer",
         size: queueHeaderSize * 2,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
