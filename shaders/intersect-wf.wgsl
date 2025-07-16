@@ -6,8 +6,9 @@ struct Ray {
 };
 
 struct QueueHeader {
+    dispatch: vec3u,
     count: atomic<u32>
-};
+}
 
 struct HitRecord {
     pos: vec3f,
@@ -17,33 +18,33 @@ struct HitRecord {
 }
 
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
-@group(2) @binding(1) var<storage, write> rayQueue: array<ray>;
-@group(2) @binding(2) var<storage, write> hitQueue: array<HitRecord>;
+@group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
+@group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
 
 @compute @workgroup_size(64, 1, 1) fn intersect(@builtin(global_invocation_id) id: vec3u) {
-    let rayQueueHeader = queueHeaders[0];
-    if (id.x >= rayQueueHeader.count) {
+    let rayQueueHeader = &queueHeaders[0];
+    if (id.x >= atomicLoad(&rayQueueHeader.count)) {
         return;
     }
 
     let sphereCenter = vec3f(0);
     let sphereRadius = 1.0;
     let tMin = 0.1;
-    let tMax = 1000.0
+    let tMax = 1000.0;
 
     let ray = rayQueue[id.x];
     
     let root = hitSphere(sphereCenter, sphereRadius, ray.orig, ray.dir, tMin, tMax);
-    if (hit > 0) {
+    if (root > 0) {
         var hr: HitRecord;
         hr.pos = ray.dir * root + ray.orig;
         hr.normal = (hr.pos - sphereCenter) / sphereRadius;
         hr.dir = ray.dir;
         hr.pixelIndex = ray.pixelIndex;
 
-        let hitQueueHeader = queueHeaders[1];
+        let hitQueueHeader = &queueHeaders[1];
         let index = atomicAdd(&hitQueueHeader.count, 1u);
-        rayQueue[index] = hr;
+        hitQueue[index] = hr;
     }
 }
 

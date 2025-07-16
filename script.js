@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
 
 const blackBorders = false;
-const staticRender = true;
+const staticRender = false;
 const pixelScaleFactor = 1;
 
 let debugFramerate = false;
@@ -114,7 +114,7 @@ async function loop(currentTime) {
         camera.updateStatic();
     } 
 
-    requestAnimationFrame(loop);
+    //requestAnimationFrame(loop);
 }
 
 async function initGPU() {
@@ -126,7 +126,6 @@ async function initGPU() {
             //scene.camera.pos = [0, 1, 0];
         }
         scene.camera.antialiasing = true;
-        console.log(scene.camera);
         setupBindGroups(scene);
         //await calculateTransforms(scene);
         requestAnimationFrame(loop);

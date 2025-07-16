@@ -7,6 +7,11 @@ let denoisePipeline;
 let transformPipeline;
 let infPipeline;
 
+let spawnPipeline;
+let intersectPipeline;
+let shadePipeline;
+let dispatchPipeline;
+
 let computeContext;
 let raytraceTexture;
 let prevTexture;
@@ -54,6 +59,8 @@ const sphereSize = 32;
 const materialSize = 48;
 const raySize = 32;
 const hitRecordSize = 48;
+const queueHeaderSize = 16;
+const bufferMax = 1024 * 1024 * 128;
 
 const runDenoiser = false;
 const denoisePassCount = 2;
@@ -99,8 +106,9 @@ async function setupGPUDevice(canvas, static=false) {
 
 function setupBindGroups(scene) {
     createRaytraceTextureBindGroup(!scene.camera.realtimeMode);
-    createObjectsBindGroup(scene);
-    createMaterialsBindGroup(scene.materialList);
+    //createObjectsBindGroup(scene);
+    //createMaterialsBindGroup(scene.materialList);
+    createQueueBindGroup();
     if (runDenoiser) {
         createDenoiseBindGroups();
     }
@@ -146,12 +154,22 @@ async function renderGPU(scene, static=false) {
 
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
 
+    /*
     const pass = encoder.beginComputePass({label: "inf pass"});
     pass.setPipeline(infPipeline);
     pass.setBindGroup(0, uniformBindGroup);
     pass.setBindGroup(1, raytraceTextureBindGroup);
     //pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
     pass.dispatchWorkgroups(camera.gridStepX, camera.gridStepY);
+    pass.end();
+    */
+
+    const pass = encoder.beginComputePass({label: "wavefront pass"});
+    pass.setPipeline(spawnPipeline);
+    pass.setBindGroup(0, uniformBindGroup);
+    pass.setBindGroup(1, raytraceTextureBindGroup);
+    pass.setBindGroup(2, queueBindGroup);
+    pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
     pass.end();
 
     /*
@@ -217,7 +235,6 @@ async function calculateTransforms(scene) {
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);
 }
-
 
 function createBindGroupLayouts(static) {
     uniformLayout = device.createBindGroupLayout({
@@ -382,6 +399,25 @@ function createBindGroupLayouts(static) {
             }
         ]
     });
+
+    queueLayout = device.createBindGroupLayout({
+        label: "queue bind group layout",
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "storage" }
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "storage" }
+            }, {
+                binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "storage" }
+            }
+        ]
+    });
 }
 
 async function createPipelines(static) {
@@ -413,7 +449,66 @@ async function createPipelines(static) {
     const transformModule = device.createShaderModule({
         label: "transform module",
         code: transformCode
-    })
+    });
+
+    let spawnCode = await loadWGSLShader("spawnrays-wf.wgsl");
+    const spawnModule = device.createShaderModule({
+        label: "spawn module",
+        code: spawnCode
+    });
+    let intersectCode = await loadWGSLShader("intersect-wf.wgsl");
+    const intersectModule = device.createShaderModule({
+        label: "intersect module",
+        code: intersectCode
+    });
+    let shadeCode = await loadWGSLShader("shade-wf.wgsl");
+    const shadeModule = device.createShaderModule({
+        label: "shade module",
+        code: shadeCode
+    });
+    let dispatchCode = await loadWGSLShader("queuedispatch-wf.wgsl");
+    const dispatchModule = device.createShaderModule({
+        label: "dispatch module",
+        code: dispatchCode
+    });
+
+    const wavefrontLayout = device.createPipelineLayout({
+        label: "spawn pipeline layout",
+        bindGroupLayouts: [
+            uniformLayout,
+            raytraceTextureLayout,
+            queueLayout
+        ]
+    });
+
+    spawnPipeline = device.createComputePipeline({
+        label: "spawn pipeline",
+        layout: wavefrontLayout,
+        compute: {
+            module: spawnModule
+        }
+    });
+    intersectPipeline = device.createComputePipeline({
+        label: "intersect pipeline",
+        layout: wavefrontLayout,
+        compute: {
+            module: intersectModule
+        }
+    });
+    shadePipeline = device.createComputePipeline({
+        label: "shade pipeline",
+        layout: wavefrontLayout,
+        compute: {
+            module: shadeModule
+        }
+    });
+    dispatchPipeline = device.createComputePipeline({
+        label: "dispatch pipeline",
+        layout: wavefrontLayout,
+        compute: {
+            module: dispatchModule
+        }
+    });
 
     const raytracePipelineLayout = device.createPipelineLayout({
         label: "raytrace pipeline layout",
@@ -727,6 +822,36 @@ function createMaterialsBindGroup(materialList) {
             { binding: 2, resource: textureArray16.createView() }
         ]
     });
+}
+
+function createQueueBindGroup() {
+    const headerBuffer = device.createBuffer({
+        label: "header buffer",
+        size: queueHeaderSize * 2,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(headerBuffer, 0, new Uint32Array([1, 1, 1, 0, 1, 1, 1, 0]));
+
+    const rayBuffer = device.createBuffer({
+        label: "ray queue buffer",
+        size: bufferMax,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+    const hitBuffer = device.createBuffer({
+        label: "hit queue buffer",
+        size: bufferMax,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
+
+    queueBindGroup = device.createBindGroup({
+        label: "queue bind group",
+        layout: queueLayout,
+        entries: [
+            { binding: 0, resource: { buffer: headerBuffer } },
+            { binding: 1, resource: { buffer: rayBuffer } },
+            { binding: 2, resource: { buffer: hitBuffer } }
+        ]
+    })
 }
 
 function createDenoiseBindGroups() {
