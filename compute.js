@@ -28,6 +28,7 @@ let objectsLayout;
 let materialsLayout;
 let denoiseParamsLayout;
 let transformLayout;
+let queueLayout
 
 let raytraceTextureBindGroup;
 let objectsBindGroup;
@@ -37,10 +38,11 @@ let denoiseParamsBindGroup;
 let finalTextureBindGroup;
 let denoiseNpBindGroup;
 let transformBindGroup;
+let queueBindGroup;
 
 let denoiseParamsBuffer;
 
-const cameraUniformSize = 112;
+const cameraUniformSize = 128;
 const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
@@ -50,6 +52,8 @@ const objectInfoSize = 48;
 const bvhNodeSize = 32;
 const sphereSize = 32;
 const materialSize = 48;
+const raySize = 32;
+const hitRecordSize = 48;
 
 const runDenoiser = false;
 const denoisePassCount = 2;
@@ -131,6 +135,7 @@ async function renderGPU(scene, static=false) {
     }
     device.queue.writeBuffer(cameraBuffer, 80, new Float32Array(camera.defocusU));
     device.queue.writeBuffer(cameraBuffer, 96, new Float32Array(camera.defocusV));
+    device.queue.writeBuffer(cameraBuffer, 112, new Uint32Array([camera.imgW, camera.imgH]));
 
     const uniformBindGroup = device.createBindGroup({
         layout: uniformLayout,
@@ -192,7 +197,6 @@ async function renderGPU(scene, static=false) {
         encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
     }
     
-
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);
 

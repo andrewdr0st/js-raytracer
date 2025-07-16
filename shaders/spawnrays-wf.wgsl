@@ -25,12 +25,13 @@ struct Ray {
 };
 
 struct QueueHeader {
+    dispatch: vec3u,
     count: atomic<u32>
 }
 
 @group(0) @binding(0) var<uniform> camera: Camera;
-@group(1) @binding(0) var<storage, read_write> queueHeader: QueueHeader;
-@group(1) @binding(1) var<storage, write> rayQueue: array<Ray>;
+@group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
+@group(2) @binding(1) var<storage, write> rayQueue: array<Ray>;
 
 @compute @workgroup_size(8, 8, 1) fn spawnRay(@builtin(global_invocation_id) id: vec3u) {
     if (id.x >= camera.imgW || id.y >= camera.imgH) {
@@ -44,6 +45,7 @@ struct QueueHeader {
     ray.dir = normalize(pCenter - camera.pos);
     ray.pixelIndex = idx + idy * camera.imgW;
     
-    let index = atomicAdd(&queueHeader.count, 1u);
+    let rayQueueHeader = queueHeaders[0];
+    let index = atomicAdd(&rayQueueHeader.count, 1u);
     rayQueue[index] = ray;
 }

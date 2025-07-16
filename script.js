@@ -28,7 +28,7 @@ ctx.imageSmoothingEnabled = false;
 const w = Math.floor(canvasW / pixelScaleFactor);
 const h = Math.floor(canvasH / pixelScaleFactor);
 
-let scene = new InfScene();
+let scene = new WavefrontScene();
 
 let cameraFVel = 0;
 let cameraRVel = 0;
