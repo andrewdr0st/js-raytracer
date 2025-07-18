@@ -1,26 +1,33 @@
-class Triangle {
-    constructor(v1, v2, v3, vt1 = 0, vt2 = 0, vt3 = 0, vn1 = 0, vn2 = 0, vn3 = 0) {
+import { Vertex } from "./vertex";
+
+let triIndex = 0;
+
+/**
+ * @typedef {Object} Triangle
+ * @property {Vertex} v1 - vertex 1
+ * @property {Vertex} v2 - vertex 2
+ * @property {Vertex} v3 - vertex 3
+ * @property {Material} material - material
+ * @property {Number} index - index into the global triangle buffer
+ */
+export class Triangle {
+    /**
+     * @param {Vertex} v1 
+     * @param {Vertex} v2 
+     * @param {Vertex} v3 
+     * @param {Material} material 
+     */
+    constructor(v1, v2, v3, material) {
         this.v1 = v1;
         this.v2 = v2;
         this.v3 = v3;
-
-        this.vt1 = vt1;
-        this.vt2 = vt2;
-        this.vt3 = vt3;
-
-        this.vn1 = vn1;
-        this.vn2 = vn2;
-        this.vn3 = vn3;
-
-        this.useNorms = vn1 == 0 && vn2 == 0 && vn3 == 0 ? 0 : 1;
-    }
-
-    getValues() {
-        return [this.v1, this.v2, this.v3, 0, this.vt1, this.vt2, this.vt3, 0, this.vn1, this.vn2, this.vn3, this.useNorms];
+        this.material = material;
+        this.data = new Uint32Array([v1.index, v2.index, v3.index, material.index]);
+        this.index = triIndex++;
     }
 }
 
-class BVHTriangle {
+export class BVHTriangle {
     constructor(index, v1, v2, v3) {
         this.index = index;
         this.v1 = v1;
