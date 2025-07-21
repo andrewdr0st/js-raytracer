@@ -17,7 +17,7 @@ export class Triangle {
      * @param {Vertex} v3 
      * @param {Material} material 
      */
-    constructor(v1, v2, v3, material) {
+    constructor(v1, v2, v3, material=0) {
         this.v1 = v1;
         this.v2 = v2;
         this.v3 = v3;
