@@ -31,8 +31,8 @@ struct HitRecord {
 
 const EPSILON = 0.00001;
 
-@group(0) @binding(1) var<storage, read> triangles: array<Triangle>;
-@group(0) @binding(2) var<storage, read> vertices: array<Vertex>;
+@group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
+@group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;

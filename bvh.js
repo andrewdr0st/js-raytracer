@@ -1,4 +1,4 @@
-var bvhList = [];
+const BVH_MAX_DEPTH = 16;
 
 class GpuBVHNode {
     constructor(a, b, triCount, index) {
@@ -21,7 +21,7 @@ class BVHNode {
     }
 
     findChildrenRecursive() {
-        if (this.bvhTris.length > 2 || this.depth == 22) {
+        if (this.bvhTris.length > 2 && this.depth < BVH_MAX_DEPTH) {
             this.findChildren();
         }
         if (this.child1 != null) {
@@ -88,6 +88,6 @@ class BVHNode {
         let x = this.b[0] - this.a[0];
         let y = this.b[1] - this.a[1];
         let z = this.b[2] - this.a[2];
-        return this.bvhTris.length * 2 * (x * (y + z) + y * z);
+        return this.bvhTris.length * (x * (y + z) + y * z);
     }
 }

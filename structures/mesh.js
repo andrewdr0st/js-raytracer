@@ -1,5 +1,5 @@
-import { Triangle } from "./triangle";
-import { Vertex } from "./vertex";
+import { Triangle, TRIANGLE_U32_COUNT, BVHTriangle } from "./triangle";
+import { Vertex, VERTEX_F32_COUNT } from "./vertex";
 
 let bvhOffset = 0;
 
@@ -17,6 +17,11 @@ export class Mesh {
         this.rootNode = 0;
     }
 
+    /**
+     * Parses the given obj file and creates the required vertex and triangle array buffers
+     * @param {String} objFile - obj file name
+     * @param {Boolean} invert - if true, inverts the triangle winding for the mesh
+     */
     async parseObjFile(objFile, invert=false) {
         const response = await fetch("objects/" + objFile);
         if (!response.ok) {
@@ -29,6 +34,8 @@ export class Mesh {
         const textureCoords = [];
         const normals = [];
         const vertexMap = new Map();
+        let vIdx = 0;
+        let tIdx = 0;
 
         for (let i = 0; i < lines.length; i++) {
             let parts = lines[i].trim().split(/\s+/);
@@ -50,34 +57,32 @@ export class Mesh {
                         let p = parseInt(v[0]) - 1;
                         let t = parseInt(v[1]) - 1;
                         let n = parseInt(v[2]) - 1;
-                        vert = new Vertex(positions[p], textureCoords[t], normals[n]);
+                        vert = new Vertex(vIdx++, positions[p], textureCoords[t], normals[n]);
                         this.vertices.push(vert);
                         vertexMap.set(s, vert);
                     }
                     vList.push(vert);
                 }
-                const tri = invert ? new Triangle(vList[2], vList[1], vList[1]) : new Triangle(vList[0], vList[1], vList[2]);
+                const tri = invert ? new Triangle(tIdx++, vList[2], vList[1], vList[0]) : new Triangle(tIdx++, vList[0], vList[1], vList[2]);
                 this.triangles.push(tri);
+                //this.bvhTriangles.push(new BVHTriangle(tri));
             }
         }
+        this.setData();
     }
 
-    getTriangles() {
-        let a = [];
-        for (let i = 0; i < this.triangles.length; i++) {
-            a = a.concat(this.triangles[i].getValues());
+    /**
+     * Creates the vertexData and triangle data ArrayBuffers that can be sent to the gpu
+     */
+    setData() {
+        this.vertexData = new Float32Array(this.vertices.length * VERTEX_F32_COUNT);
+        for (let i = 0; i < this.vertices.length; i++) {
+            this.vertexData.set(this.vertices[i].data, i * VERTEX_F32_COUNT);
         }
-        return new Uint32Array(a);
-    }
-
-    addBVHTriangle(index, v1, v2, v3) {
-        v1 = (v1 - (vertexOffset + 1)) * 4;
-        v2 = (v2 - (vertexOffset + 1)) * 4;
-        v3 = (v3 - (vertexOffset + 1)) * 4;
-        let v01 = [this.vertices[v1], this.vertices[v1 + 1], this.vertices[v1 + 2]];
-        let v02 = [this.vertices[v2], this.vertices[v2 + 1], this.vertices[v2 + 2]];
-        let v03 = [this.vertices[v3], this.vertices[v3 + 1], this.vertices[v3 + 2]];
-        this.bvhTriangles.push(new BVHTriangle(index, v01, v02, v03));
+        this.triangleData = new Uint32Array(this.triangles.length * TRIANGLE_U32_COUNT);
+        for (let i = 0; i < this.triangles.length; i++) {
+            this.triangleData.set(this.triangles[i].data, i * TRIANGLE_U32_COUNT);
+        }
     }
 
     buildBVH() {
