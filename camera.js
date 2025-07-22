@@ -1,3 +1,5 @@
+let cameraBuffer;
+
 class Camera {
     constructor(pos, lookTo, imgW, imgH, fov) {
         this.pos = pos;

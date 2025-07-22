@@ -8,7 +8,6 @@ export const TRIANGLE_U32_COUNT = 4;
  * @property {Vertex} v1 - vertex 1
  * @property {Vertex} v2 - vertex 2
  * @property {Vertex} v3 - vertex 3
- * @property {Material} material - material
  * @property {Number} index - index into the mesh triangle buffer
  */
 export class Triangle {
@@ -17,15 +16,13 @@ export class Triangle {
      * @param {Vertex} v1 
      * @param {Vertex} v2 
      * @param {Vertex} v3 
-     * @param {Material} material 
      */
-    constructor(index, v1, v2, v3, material=0) {
+    constructor(index, v1, v2, v3) {
         this.index = index;
         this.v1 = v1;
         this.v2 = v2;
         this.v3 = v3;
-        this.material = material;
-        this.data = new Uint32Array([v1.index, v2.index, v3.index, material.index]);
+        this.data = new Uint32Array([v1.index, v2.index, v3.index, 0]);
     }
 }
 

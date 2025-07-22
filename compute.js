@@ -33,7 +33,7 @@ let objectsLayout;
 let materialsLayout;
 let denoiseParamsLayout;
 let transformLayout;
-let queueLayout
+let queueLayout;
 
 let raytraceTextureBindGroup;
 let objectsBindGroup;

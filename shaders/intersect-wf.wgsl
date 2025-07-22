@@ -13,9 +13,15 @@ struct Vertex {
 };
 
 struct Triangle {
-    vertices: vec3u,
-    material: u32
+    vertices: vec3u
 };
+
+struct BVHNode {
+    a: vec3f,
+    triCount: u32,
+    b: vec3f,
+    index: u32
+}
 
 struct QueueHeader {
     dispatch: vec3u,

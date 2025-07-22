@@ -1,3 +1,8 @@
+let sceneBindGroupLayout;
+let sceneBindGroup;
+let vertexBuffer;
+let triangleBuffer;
+
 class Scene {
     constructor() {
         this.camera;
@@ -27,12 +32,37 @@ class Scene {
 
     }
 
+    setupMaterials() {
+
+    }
+
     addObject(meshId, matId) {
         this.objectList.push(new SceneObject(this.meshList[meshId], matId));
         this.objectCount++;
     }
 
-    setupMaterials() {
-
+    setupBindGroup() {
+        
     }
+}
+
+function createSceneBindGroupLayout() {
+    sceneBindGroupLayout = device.createBindGroupLayout({
+        label: "scene layout",
+        entries: [
+            {   //camera
+                binding: 0,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "uniform" }
+            }, {//vertices
+                binding: 1,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {//triangles
+                binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            },
+        ]
+    })
 }
