@@ -100,11 +100,11 @@ async function loop(currentTime) {
     }
     let camera = scene.camera;
 
-    if (!staticRender) {
-        let moveVec = vnorm(vadd(vscalar(camera.forward, cameraFVel), vscalar(camera.right, cameraRVel)));
-        camera.pos = vadd(camera.pos, vscalar(moveVec, deltaTime * moveSpeed));
-        camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
-    }
+    // if (!staticRender) {
+    //     let moveVec = vnorm(vadd(vscalar(camera.forward, cameraFVel), vscalar(camera.right, cameraRVel)));
+    //     camera.pos = vadd(camera.pos, vscalar(moveVec, deltaTime * moveSpeed));
+    //     camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
+    // }
 
     camera.init();
 
