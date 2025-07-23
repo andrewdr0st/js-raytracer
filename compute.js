@@ -1,3 +1,5 @@
+import { Pipeline } from "./pipeline";
+
 let adapter;
 let device;
 
@@ -28,14 +30,12 @@ let raytraceTextureLayout;
 let npTextureLayout;
 let denoiseTextureLayout;
 let denoiseNpLayout;
-let objectsLayout;
 let materialsLayout;
 let denoiseParamsLayout;
 let transformLayout;
 let queueLayout;
 
 let raytraceTextureBindGroup;
-let objectsBindGroup;
 let materialsBindGroup;
 let npTextureBindGroup;
 let denoiseParamsBindGroup;
@@ -48,14 +48,9 @@ let denoiseParamsBuffer;
 let headerBuffer;
 let dispatchBuffer;
 
-const triangleSize = 48;
-const vertexSize = 16;
-const uvSize = 8;
-const normalsSize = 16;
 const objectSize = 160;
 const objectInfoSize = 48;
 const bvhNodeSize = 32;
-const sphereSize = 32;
 const materialSize = 48;
 const raySize = 32;
 const hitRecordSize = 48;
@@ -71,17 +66,13 @@ async function loadWGSLShader(f) {
     return await response.text();
 }
 
-async function setupGPUDevice(canvas, static=false) {
+async function setupGPUDevice(canvas, staticRender=false) {
     adapter = await navigator.gpu?.requestAdapter();
     device = await adapter?.requestDevice();
     if (!device) {
         alert('need a browser that supports WebGPU');
         return false;
     }
-
-    createBindGroupLayouts(static);
-
-    await createPipelines(static);
 
     computeContext = canvas.getContext("webgpu");
     computeContext.configure({
@@ -90,31 +81,38 @@ async function setupGPUDevice(canvas, static=false) {
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC
     });
 
-    createRenderTextures(static);
+    createRenderTextures(staticRender);
 
-    let t1 = await loadImage("red8x8.png");
-    let t2 = await loadImage("blurple8x8.png");
-    let t3 = await loadImage("checker8x8.png");
-    texList8 = [t1, t2, t3];
+    // let t1 = await loadImage("red8x8.png");
+    // let t2 = await loadImage("blurple8x8.png");
+    // let t3 = await loadImage("checker8x8.png");
+    // texList8 = [t1, t2, t3];
 
-    let t4 = await loadImage("brick16x16.png");
-    let t5 = await loadImage("planks16x16.png");
-    texList16 = [t4, t5];
+    // let t4 = await loadImage("brick16x16.png");
+    // let t5 = await loadImage("planks16x16.png");
+    // texList16 = [t4, t5];
 
     return true;
+}
+
+async function setupGPUData(scene) {
+    createBindGroupLayouts();
+    setupBindGroups();
+    await createPipelines();
 }
 
 function setupBindGroups(scene) {
     createRaytraceTextureBindGroup(!scene.camera.realtimeMode);
     //createObjectsBindGroup(scene);
     //createMaterialsBindGroup(scene.materialList);
+    scene.createBindGroup();
     createQueueBindGroup();
     if (runDenoiser) {
         createDenoiseBindGroups();
     }
 }
 
-async function renderGPU(scene, static=false) {
+async function renderGPU(scene, staticRender=false) {
     let camera = scene.camera;
     camera.writeToBuffer();
 
@@ -130,49 +128,17 @@ async function renderGPU(scene, static=false) {
     pass.end();
     */
 
-    const spawnPass = encoder.beginComputePass({label: "spawn pass"});
-    spawnPass.setPipeline(spawnPipeline);
-    spawnPass.setBindGroup(0, uniformBindGroup);
-    spawnPass.setBindGroup(1, raytraceTextureBindGroup);
-    spawnPass.setBindGroup(2, queueBindGroup);
-    spawnPass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
-    spawnPass.end();
+    spawnPipeline.run(encoder, Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
 
-    const qpass1 = encoder.beginComputePass({label: "queue pass"});
-    qpass1.setPipeline(dispatchPipeline);
-    qpass1.setBindGroup(0, uniformBindGroup);
-    qpass1.setBindGroup(1, raytraceTextureBindGroup);
-    qpass1.setBindGroup(2, queueBindGroup);
-    qpass1.dispatchWorkgroups(2);
-    qpass1.end();
-
+    dispatchPipeline.run(encoder, 2);
     encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
-    const intersectPass = encoder.beginComputePass({label: "intersect pass"});
-    intersectPass.setPipeline(intersectPipeline);
-    intersectPass.setBindGroup(0, uniformBindGroup);
-    intersectPass.setBindGroup(1, raytraceTextureBindGroup);
-    intersectPass.setBindGroup(2, queueBindGroup);
-    intersectPass.dispatchWorkgroupsIndirect(dispatchBuffer, 0);
-    intersectPass.end();
+    intersectPipeline.runIndirect(encoder, dispatchBuffer, 0);
 
-    const qpass2 = encoder.beginComputePass({label: "queue pass"});
-    qpass2.setPipeline(dispatchPipeline);
-    qpass2.setBindGroup(0, uniformBindGroup);
-    qpass2.setBindGroup(1, raytraceTextureBindGroup);
-    qpass2.setBindGroup(2, queueBindGroup);
-    qpass2.dispatchWorkgroups(2);
-    qpass2.end();
-
+    dispatchPipeline.run(encoder, 2);
     encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
-
-    const shadePass = encoder.beginComputePass({label: "shade pass"});
-    shadePass.setPipeline(shadePipeline);
-    shadePass.setBindGroup(0, uniformBindGroup);
-    shadePass.setBindGroup(1, raytraceTextureBindGroup);
-    shadePass.setBindGroup(2, queueBindGroup);
-    shadePass.dispatchWorkgroupsIndirect(dispatchBuffer, 0);
-    shadePass.end();
+    
+    shadePipeline.runIndirect(encoder, dispatchBuffer, queueHeaderSize);
 
     /*
     const pass = encoder.beginComputePass({ label: "raytrace pass" });
@@ -213,7 +179,7 @@ async function renderGPU(scene, static=false) {
         }
     }
     */
-    if (static) {
+    if (staticRender) {
         encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
     }
     
@@ -238,18 +204,8 @@ async function calculateTransforms(scene) {
     device.queue.submit([commandBuffer]);
 }
 
-function createBindGroupLayouts(static) {
-    uniformLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "uniform" }
-            }
-        ]
-    });
-
-    if (static) {
+function createBindGroupLayouts(staticRender) {
+    if (staticRender) {
         raytraceTextureLayout = device.createBindGroupLayout({
             entries: [
                 {
@@ -314,41 +270,6 @@ function createBindGroupLayouts(static) {
                 binding: 1,
                 visibility: GPUShaderStage.COMPUTE,
                 storageTexture: { format: "rgba16float", access: "read-only" }
-            }
-        ]
-    });
-
-    objectsLayout = device.createBindGroupLayout({
-        label: "objects bind group layout",
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 2,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 3,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 4,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 5,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 6,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
             }
         ]
     });
@@ -420,190 +341,37 @@ function createBindGroupLayouts(static) {
             }
         ]
     });
+
+    createSceneBindGroupLayout();
 }
 
-async function createPipelines(static) {
-    let raytaceCode = static ? await loadWGSLShader("raytracestatic.wgsl") : await loadWGSLShader("raytrace.wgsl");
-    const raytraceModule = device.createShaderModule({
-        label: "Raytrace module",
-        code: raytaceCode
-    });
-
-    let npCode = await loadWGSLShader("normalspositions.wgsl");
-    const npModule = device.createShaderModule({
-        label: "normals positions module",
-        code: npCode
-    });
-
-    let denoiseCode = await loadWGSLShader("denoise.wgsl");
-    const denoiseModule = device.createShaderModule({
-        label: "denoise module",
-        code: denoiseCode
-    });
-
-    let infCode = await loadWGSLShader(static ? "inftracestatic.wgsl" : "inftrace.wgsl");
-    const infModule = device.createShaderModule({
-        label: "inf module",
-        code: infCode
-    });
-
-    let transformCode = await loadWGSLShader("transform.wgsl");
-    const transformModule = device.createShaderModule({
-        label: "transform module",
-        code: transformCode
-    });
-
-    let spawnCode = await loadWGSLShader("spawnrays-wf.wgsl");
-    const spawnModule = device.createShaderModule({
-        label: "spawn module",
-        code: spawnCode
-    });
-    let intersectCode = await loadWGSLShader("intersect-wf.wgsl");
-    const intersectModule = device.createShaderModule({
-        label: "intersect module",
-        code: intersectCode
-    });
-    let shadeCode = await loadWGSLShader("shade-wf.wgsl");
-    const shadeModule = device.createShaderModule({
-        label: "shade module",
-        code: shadeCode
-    });
-    let dispatchCode = await loadWGSLShader("queuedispatch-wf.wgsl");
-    const dispatchModule = device.createShaderModule({
-        label: "dispatch module",
-        code: dispatchCode
-    });
-
+async function createPipelines(staticRender) {
     const wavefrontLayout = device.createPipelineLayout({
-        label: "spawn pipeline layout",
         bindGroupLayouts: [
-            uniformLayout,
+            sceneBindGroupLayout,
             raytraceTextureLayout,
             queueLayout
         ]
     });
+    const wavefrontBindGroups = [sceneBindGroup, raytraceTextureBindGroup, queueBindGroup, null];
 
-    spawnPipeline = device.createComputePipeline({
-        label: "spawn pipeline",
-        layout: wavefrontLayout,
-        compute: {
-            module: spawnModule
-        }
-    });
-    intersectPipeline = device.createComputePipeline({
-        label: "intersect pipeline",
-        layout: wavefrontLayout,
-        compute: {
-            module: intersectModule
-        }
-    });
-    shadePipeline = device.createComputePipeline({
-        label: "shade pipeline",
-        layout: wavefrontLayout,
-        compute: {
-            module: shadeModule
-        }
-    });
-    dispatchPipeline = device.createComputePipeline({
-        label: "dispatch pipeline",
-        layout: wavefrontLayout,
-        compute: {
-            module: dispatchModule
-        }
-    });
+    spawnPipeline = new Pipeline("spawnrays-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
+    intersectPipeline = new Pipeline("intersect-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
+    shadePipeline = new Pipeline("shade-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
+    dispatchPipeline = new Pipeline("queuedispatch-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
 
-    const raytracePipelineLayout = device.createPipelineLayout({
-        label: "raytrace pipeline layout",
-        bindGroupLayouts: [
-            uniformLayout,
-            raytraceTextureLayout,
-            objectsLayout,
-            materialsLayout
-        ]
-    });
-
-    raytracePipeline = device.createComputePipeline({
-        label: "raytrace pipeline",
-        layout: raytracePipelineLayout,
-        compute: {
-            module: raytraceModule
-        }
-    });
-
-    const infPipelineLayout = device.createPipelineLayout({
-        label: "inf pipeline layout",
-        bindGroupLayouts: [
-            uniformLayout,
-            raytraceTextureLayout
-        ]
-    });
-
-    infPipeline = device.createComputePipeline({
-        label: "inf pipeline",
-        layout: infPipelineLayout,
-        compute: {
-            module: infModule
-        }
-    });
-
-    const npPipelineLayout = device.createPipelineLayout({
-        label: "np pipeline layout",
-        bindGroupLayouts: [
-            uniformLayout,
-            npTextureLayout,
-            objectsLayout
-        ]
-    });
-
-    npPipeline = device.createComputePipeline({
-        label: "normals and positions pipeline",
-        layout: npPipelineLayout,
-        compute: {
-            module: npModule
-        }
-    });
-
-    const denoisePipelineLayout = device.createPipelineLayout({
-        label: "denoise pipeline layout",
-        bindGroupLayouts: [
-            denoiseTextureLayout,
-            denoiseNpLayout,
-            denoiseParamsLayout
-        ]
-    });
-
-    denoisePipeline = device.createComputePipeline({
-        label: "denoise pipeline",
-        layout: denoisePipelineLayout,
-        compute: {
-            module: denoiseModule
-        }
-    });
-
-    const transformPipelineLayout = device.createPipelineLayout({
-        label: "transform pipeline layout",
-        bindGroupLayouts: [
-            transformLayout
-        ]
-    });
-
-    transformPipeline = device.createComputePipeline({
-        label: "transform pipeline",
-        layout: transformPipelineLayout,
-        compute: {
-            module: transformModule
-        }
-    });
+    const pipelinePromises = [spawnPipeline.build(), intersectPipeline.build(), shadePipeline.build(), dispatchPipeline.build()];
+    await Promise.all(pipelinePromises);
 }
 
-function createRenderTextures(static) {
+function createRenderTextures(staticRender) {
     raytraceTexture = device.createTexture({
         size: {width: canvas.width, height: canvas.height},
         format: "rgba8unorm",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });
 
-    if (static) {
+    if (staticRender) {
         prevTexture = device.createTexture({
             size: {width: canvas.width, height: canvas.height},
             format: "rgba8unorm",
@@ -626,8 +394,8 @@ function createRenderTextures(static) {
     finalTexture = computeContext.getCurrentTexture();
 }
 
-function createRaytraceTextureBindGroup(static) {
-    if (static) {
+function createRaytraceTextureBindGroup(staticRender) {
+    if (staticRender) {
         raytraceTextureBindGroup = device.createBindGroup({
             label: "ray trace texture bind group",
             layout: raytraceTextureLayout,

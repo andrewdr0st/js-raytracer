@@ -8,7 +8,6 @@ class Scene {
         this.camera;
         this.materialList = [];
         this.meshList = [];
-        this.sphereList = [];
         this.objectList = [];
         this.objectCount = 0;
     }
@@ -18,6 +17,8 @@ class Scene {
         this.setupMaterials();
         await this.loadMeshes();
         this.setupObjects();
+        this.createVertexBuffer();
+        this.createTriangleBuffer();
     }
 
     setupCamera(w, h) {
@@ -43,6 +44,7 @@ class Scene {
 
     createBindGroup() {
         sceneBindGroup = device.createBindGroup({
+            label: "scene bind group",
             layout: sceneBindGroupLayout,
             entries: [
                 {binding: 0, resource: {buffer: cameraBuffer}},
@@ -54,6 +56,7 @@ class Scene {
 
     createVertexBuffer() {
         vertexBuffer = device.createBuffer({
+            label: "vetex buffer",
             size: this.meshList[0].vertexData.byteLength,
             usage: GPUBufferUsage.STORAGE
         });
@@ -62,6 +65,7 @@ class Scene {
 
     createTriangleBuffer() {
         triangleBuffer = device.createBuffer({
+            label: "triangle buffer",
             size: this.meshList[0].triangleData.byteLength,
             usage: GPUBufferUsage.STORAGE
         });

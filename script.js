@@ -122,12 +122,9 @@ async function initGPU() {
         await scene.setup(w, h);
         if (staticRender) {
             scene.camera.realtimeMode = false;
-        } else {
-            //scene.camera.pos = [0, 1, 0];
         }
-        scene.camera.antialiasing = true;
-        setupBindGroups(scene);
-        //await calculateTransforms(scene);
+        //scene.camera.antialiasing = true;
+        await setupGPUData(scene);
         requestAnimationFrame(loop);
     }
 }
