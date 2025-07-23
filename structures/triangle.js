@@ -1,4 +1,4 @@
-import { Vertex } from "./vertex";
+import { Vertex } from "./vertex.js";
 
 export const TRIANGLE_BYTE_SIZE = 16;
 export const TRIANGLE_U32_COUNT = 4;

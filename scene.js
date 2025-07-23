@@ -1,9 +1,12 @@
-let sceneBindGroupLayout;
-let sceneBindGroup;
+import { device } from "./gpuManager.js";
+import { cameraBuffer } from "./camera.js";
+
+export let sceneBindGroupLayout;
+export let sceneBindGroup;
 let vertexBuffer;
 let triangleBuffer;
 
-class Scene {
+export class Scene {
     constructor() {
         this.camera;
         this.materialList = [];
@@ -58,7 +61,7 @@ class Scene {
         vertexBuffer = device.createBuffer({
             label: "vetex buffer",
             size: this.meshList[0].vertexData.byteLength,
-            usage: GPUBufferUsage.STORAGE
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
         device.queue.writeBuffer(vertexBuffer, 0, this.meshList[0].vertexData);
     }
@@ -67,13 +70,13 @@ class Scene {
         triangleBuffer = device.createBuffer({
             label: "triangle buffer",
             size: this.meshList[0].triangleData.byteLength,
-            usage: GPUBufferUsage.STORAGE
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
         device.queue.writeBuffer(triangleBuffer, 0, this.meshList[0].triangleData);
     }
 }
 
-function createSceneBindGroupLayout() {
+export function createSceneBindGroupLayout() {
     sceneBindGroupLayout = device.createBindGroupLayout({
         label: "scene layout",
         entries: [

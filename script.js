@@ -1,3 +1,6 @@
+import { setupGPUDevice } from "./gpuManager.js";
+import { setupGPUData, renderGPU } from "./compute.js";
+import { WavefrontScene } from "./scenes/wavefrontTest.js";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
@@ -82,12 +85,11 @@ if (!staticRender) {
     });
 }
 
-const tempCanvas = document.createElement('canvas');
+const tempCanvas = document.createElement("canvas");
 tempCanvas.width = w;
 tempCanvas.height = h;
 
 let lastFrameTime = 0;
-
 
 
 async function loop(currentTime) {
@@ -106,7 +108,7 @@ async function loop(currentTime) {
 
     camera.init();
 
-    await runGPUThing();
+    await renderGPU(scene, staticRender);
 
     ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
 
@@ -123,14 +125,9 @@ async function initGPU() {
         if (staticRender) {
             scene.camera.realtimeMode = false;
         }
-        //scene.camera.antialiasing = true;
         await setupGPUData(scene);
         requestAnimationFrame(loop);
     }
-}
-
-async function runGPUThing() {
-    await renderGPU(scene, staticRender);
 }
 
 initGPU();

@@ -1,3 +1,5 @@
+import { device } from "./gpuManager.js";
+
 export class Pipeline {
     /**
      * @param {String} shader - shader filename
@@ -18,9 +20,8 @@ export class Pipeline {
     async build() {
         return loadWGSLShader(this.shader).then(shader => {
             const module = device.createShaderModule({code: shader});
-            const pipelineLayout = device.createPipelineLayout({bindGroupLayouts: layout});
             this.pipeline = device.createComputePipeline({
-                layout: pipelineLayout,
+                layout: this.layout,
                 compute: {module: module}
             });
         });
@@ -62,4 +63,9 @@ export class Pipeline {
             }
         }
     }
+}
+
+async function loadWGSLShader(f) {
+    let response = await fetch("shaders/" + f);
+    return await response.text();
 }

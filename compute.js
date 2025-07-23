@@ -1,7 +1,7 @@
-import { Pipeline } from "./pipeline";
-
-let adapter;
-let device;
+import { device, computeContext } from "./gpuManager.js";
+import { Pipeline } from "./pipeline.js";
+import { sceneBindGroupLayout, sceneBindGroup, createSceneBindGroupLayout } from "./scene.js";
+import { createCameraBuffer } from "./camera.js";
 
 let raytracePipeline;
 let npPipeline;
@@ -14,7 +14,6 @@ let intersectPipeline;
 let shadePipeline;
 let dispatchPipeline;
 
-let computeContext;
 let raytraceTexture;
 let prevTexture;
 let normalsTexture;
@@ -61,43 +60,10 @@ const runDenoiser = false;
 const denoisePassCount = 2;
 let stepw = 1.0;
 
-async function loadWGSLShader(f) {
-    let response = await fetch("shaders/" + f);
-    return await response.text();
-}
-
-async function setupGPUDevice(canvas, staticRender=false) {
-    adapter = await navigator.gpu?.requestAdapter();
-    device = await adapter?.requestDevice();
-    if (!device) {
-        alert('need a browser that supports WebGPU');
-        return false;
-    }
-
-    computeContext = canvas.getContext("webgpu");
-    computeContext.configure({
-        device,
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC
-    });
-
+export async function setupGPUData(scene, staticRender=false) {
     createRenderTextures(staticRender);
-
-    // let t1 = await loadImage("red8x8.png");
-    // let t2 = await loadImage("blurple8x8.png");
-    // let t3 = await loadImage("checker8x8.png");
-    // texList8 = [t1, t2, t3];
-
-    // let t4 = await loadImage("brick16x16.png");
-    // let t5 = await loadImage("planks16x16.png");
-    // texList16 = [t4, t5];
-
-    return true;
-}
-
-async function setupGPUData(scene) {
-    createBindGroupLayouts();
-    setupBindGroups();
+    createBindGroupLayouts(staticRender);
+    setupBindGroups(scene);
     await createPipelines();
 }
 
@@ -105,6 +71,7 @@ function setupBindGroups(scene) {
     createRaytraceTextureBindGroup(!scene.camera.realtimeMode);
     //createObjectsBindGroup(scene);
     //createMaterialsBindGroup(scene.materialList);
+    createCameraBuffer();
     scene.createBindGroup();
     createQueueBindGroup();
     if (runDenoiser) {
@@ -112,7 +79,7 @@ function setupBindGroups(scene) {
     }
 }
 
-async function renderGPU(scene, staticRender=false) {
+export async function renderGPU(scene, staticRender=false) {
     let camera = scene.camera;
     camera.writeToBuffer();
 
@@ -137,7 +104,7 @@ async function renderGPU(scene, staticRender=false) {
 
     dispatchPipeline.run(encoder, 2);
     encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
-    
+
     shadePipeline.runIndirect(encoder, dispatchBuffer, queueHeaderSize);
 
     /*
@@ -345,7 +312,7 @@ function createBindGroupLayouts(staticRender) {
     createSceneBindGroupLayout();
 }
 
-async function createPipelines(staticRender) {
+async function createPipelines() {
     const wavefrontLayout = device.createPipelineLayout({
         bindGroupLayouts: [
             sceneBindGroupLayout,

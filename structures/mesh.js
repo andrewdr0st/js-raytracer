@@ -1,5 +1,5 @@
-import { Triangle, TRIANGLE_U32_COUNT, BVHTriangle } from "./triangle";
-import { Vertex, VERTEX_F32_COUNT } from "./vertex";
+import { Triangle, TRIANGLE_U32_COUNT, BVHTriangle } from "./triangle.js";
+import { Vertex, VERTEX_F32_COUNT } from "./vertex.js";
 
 let bvhOffset = 0;
 

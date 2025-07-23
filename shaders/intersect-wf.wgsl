@@ -110,7 +110,7 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> f32 {
         return -1.0;
     }
     let c = 1 - a - b;
-    let t = f * dot(edge2, q);
+    let t = d * dot(edge2, q);
     let tc = vec2f(a * v1.u + b * v2.u + c * v3.u, a * v1.v + b * v2.v + c * v3.v);
     let normal = a * v1.normal + b * v2.normal + c * v3.normal;
     return t;

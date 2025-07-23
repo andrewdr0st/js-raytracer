@@ -1,7 +1,9 @@
-const CAMERA_BYTE_SIZE = 128;
-let cameraBuffer;
+import { device } from "./gpuManager.js";
 
-class Camera {
+const CAMERA_BYTE_SIZE = 128;
+export let cameraBuffer;
+
+export class Camera {
     constructor(pos, lookTo, imgW, imgH, fov) {
         this.pos = pos;
         this.lookTo = lookTo;
@@ -64,6 +66,9 @@ class Camera {
         this.defocusV = vscalar(v, defocusRadius);
     }
 
+    /**
+     * Writes the camera's data to the camera buffer
+     */
     writeToBuffer() {
         device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(this.pos));
         device.queue.writeBuffer(cameraBuffer, 12, new Int32Array([this.raysPerPixel]));
@@ -78,7 +83,7 @@ class Camera {
         device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(this.pixelDeltaV));
         device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(this.backgroundColor));
 
-        if (static) {
+        if (!this.realtimeMode) {
             device.queue.writeBuffer(cameraBuffer, 60, new Int32Array([this.seed]));
             device.queue.writeBuffer(cameraBuffer, 76, new Int32Array([this.frameCount]));
             device.queue.writeBuffer(cameraBuffer, 92, new Uint32Array([this.gridX]));
@@ -110,10 +115,13 @@ class Camera {
 
 }
 
-function createCameraBuffer() {
+/**
+ * Creates the camera buffer. Only needs to be called once.
+ */
+export function createCameraBuffer() {
     cameraBuffer = device.createBuffer({
         size: CAMERA_BYTE_SIZE,
-        usage: GPUBufferUsage.UNIFORM
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 }
 
