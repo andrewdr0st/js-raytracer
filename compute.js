@@ -24,7 +24,6 @@ let texList8;
 let textureArray16;
 let texList16;
 
-let uniformLayout;
 let raytraceTextureLayout;
 let npTextureLayout;
 let denoiseTextureLayout;
@@ -49,7 +48,6 @@ let denoiseParamsBuffer;
 let headerBuffer;
 let dispatchBuffer;
 
-const cameraUniformSize = 128;
 const triangleSize = 48;
 const vertexSize = 16;
 const uvSize = 8;
@@ -118,41 +116,7 @@ function setupBindGroups(scene) {
 
 async function renderGPU(scene, static=false) {
     let camera = scene.camera;
-
-    const cameraBuffer = device.createBuffer({
-        label: "camera uniform buffer",
-        size: cameraUniformSize,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(camera.pos));
-    device.queue.writeBuffer(cameraBuffer, 12, new Int32Array([camera.raysPerPixel]));
-    device.queue.writeBuffer(cameraBuffer, 16, new Float32Array(camera.topLeftPixel));
-    device.queue.writeBuffer(cameraBuffer, 28, new Int32Array([camera.bounceCount]));
-    device.queue.writeBuffer(cameraBuffer, 32, new Float32Array(camera.pixelDeltaU));
-    if (camera.antialiasing) {
-        device.queue.writeBuffer(cameraBuffer, 44, new Uint32Array([1]));
-    } else {
-        device.queue.writeBuffer(cameraBuffer, 44, new Uint32Array([0]));
-    }
-    device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(camera.pixelDeltaV));
-    device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(camera.backgroundColor));
-
-    if (static) {
-        device.queue.writeBuffer(cameraBuffer, 60, new Int32Array([camera.seed]));
-        device.queue.writeBuffer(cameraBuffer, 76, new Int32Array([camera.frameCount]));
-        device.queue.writeBuffer(cameraBuffer, 92, new Uint32Array([camera.gridX]));
-        device.queue.writeBuffer(cameraBuffer, 108, new Uint32Array([camera.gridY]));
-    }
-    device.queue.writeBuffer(cameraBuffer, 80, new Float32Array(camera.defocusU));
-    device.queue.writeBuffer(cameraBuffer, 96, new Float32Array(camera.defocusV));
-    device.queue.writeBuffer(cameraBuffer, 112, new Uint32Array([camera.imgW, camera.imgH]));
-
-    const uniformBindGroup = device.createBindGroup({
-        layout: uniformLayout,
-        entries: [
-            { binding: 0, resource: { buffer: cameraBuffer } }
-        ]
-    });
+    camera.writeToBuffer();
 
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
 

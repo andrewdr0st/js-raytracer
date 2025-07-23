@@ -1,3 +1,4 @@
+const CAMERA_BYTE_SIZE = 128;
 let cameraBuffer;
 
 class Camera {
@@ -63,6 +64,31 @@ class Camera {
         this.defocusV = vscalar(v, defocusRadius);
     }
 
+    writeToBuffer() {
+        device.queue.writeBuffer(cameraBuffer, 0, new Float32Array(this.pos));
+        device.queue.writeBuffer(cameraBuffer, 12, new Int32Array([this.raysPerPixel]));
+        device.queue.writeBuffer(cameraBuffer, 16, new Float32Array(this.topLeftPixel));
+        device.queue.writeBuffer(cameraBuffer, 28, new Int32Array([this.bounceCount]));
+        device.queue.writeBuffer(cameraBuffer, 32, new Float32Array(this.pixelDeltaU));
+        if (this.antialiasing) {
+            device.queue.writeBuffer(cameraBuffer, 44, new Uint32Array([1]));
+        } else {
+            device.queue.writeBuffer(cameraBuffer, 44, new Uint32Array([0]));
+        }
+        device.queue.writeBuffer(cameraBuffer, 48, new Float32Array(this.pixelDeltaV));
+        device.queue.writeBuffer(cameraBuffer, 64, new Float32Array(this.backgroundColor));
+
+        if (static) {
+            device.queue.writeBuffer(cameraBuffer, 60, new Int32Array([this.seed]));
+            device.queue.writeBuffer(cameraBuffer, 76, new Int32Array([this.frameCount]));
+            device.queue.writeBuffer(cameraBuffer, 92, new Uint32Array([this.gridX]));
+            device.queue.writeBuffer(cameraBuffer, 108, new Uint32Array([this.gridY]));
+        }
+        device.queue.writeBuffer(cameraBuffer, 80, new Float32Array(this.defocusU));
+        device.queue.writeBuffer(cameraBuffer, 96, new Float32Array(this.defocusV));
+        device.queue.writeBuffer(cameraBuffer, 112, new Uint32Array([this.imgW, this.imgH]));
+    }
+
     updateStatic() {
         this.gridX += 8 * this.gridStepX;
         if (this.gridX >= this.imgW) {
@@ -82,5 +108,12 @@ class Camera {
         this.pos = [x * Math.cos(theta), y, x * Math.sin(theta)];
     }
 
+}
+
+function createCameraBuffer() {
+    cameraBuffer = device.createBuffer({
+        size: CAMERA_BYTE_SIZE,
+        usage: GPUBufferUsage.UNIFORM
+    });
 }
 

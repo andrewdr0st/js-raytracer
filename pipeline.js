@@ -1,24 +1,15 @@
 export class Pipeline {
-    constructor(shader, bindGroups) {
+    constructor(shader, layout, bindGroups) {
         this.shader = shader;
+        this.layout = layout;
         this.bindGroups = bindGroups;
         this.pipeline;
     }
 
     async build() {
         return loadWGSLShader(this.shader).then(shader => {
-            const module = device.createShaderModule({
-                code: shader
-            });
-            let bgLayouts = [];
-            for (let i = 0; i < 4; i++) {
-                if (this.bindGroups[i]) {
-                    bgLayouts.push(this.bindGroups[i].layout);
-                }
-            }
-            const pipelineLayout = device.createPipelineLayout({
-                bindGroupLayouts: bgLayouts
-            });
+            const module = device.createShaderModule({code: shader});
+            const pipelineLayout = device.createPipelineLayout({bindGroupLayouts: layout});
             this.pipeline = device.createComputePipeline({
                 layout: pipelineLayout,
                 compute: {module: module}

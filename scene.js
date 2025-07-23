@@ -41,8 +41,31 @@ class Scene {
         this.objectCount++;
     }
 
-    setupBindGroup() {
-        
+    createBindGroup() {
+        sceneBindGroup = device.createBindGroup({
+            layout: sceneBindGroupLayout,
+            entries: [
+                {binding: 0, resource: {buffer: cameraBuffer}},
+                {binding: 1, resource: {buffer: vertexBuffer}},
+                {binding: 2, resource: {buffer: triangleBuffer}}
+            ]
+        });
+    }
+
+    createVertexBuffer() {
+        vertexBuffer = device.createBuffer({
+            size: this.meshList[0].vertexData.byteLength,
+            usage: GPUBufferUsage.STORAGE
+        });
+        device.queue.writeBuffer(vertexBuffer, 0, this.meshList[0].vertexData);
+    }
+
+    createTriangleBuffer() {
+        triangleBuffer = device.createBuffer({
+            size: this.meshList[0].triangleData.byteLength,
+            usage: GPUBufferUsage.STORAGE
+        });
+        device.queue.writeBuffer(triangleBuffer, 0, this.meshList[0].triangleData);
     }
 }
 
@@ -62,7 +85,7 @@ function createSceneBindGroupLayout() {
                 binding: 2,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
-            },
+            }
         ]
-    })
+    });
 }
