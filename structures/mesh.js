@@ -1,5 +1,6 @@
 import { Triangle, TRIANGLE_U32_COUNT, BVHTriangle } from "./triangle.js";
 import { Vertex, VERTEX_F32_COUNT } from "./vertex.js";
+import { BVHNode, GpuBVHNode } from "../bvh.js";
 
 let bvhOffset = 0;
 
@@ -13,7 +14,7 @@ export class Mesh {
 
         this.bvhTriangles = [];
         this.bvhNode = null;
-        this.bvhList = [];
+        this.bvhData;
         this.rootNode = 0;
     }
 
@@ -65,9 +66,10 @@ export class Mesh {
                 }
                 const tri = invert ? new Triangle(tIdx++, vList[2], vList[1], vList[0]) : new Triangle(tIdx++, vList[0], vList[1], vList[2]);
                 this.triangles.push(tri);
-                //this.bvhTriangles.push(new BVHTriangle(tri));
+                this.bvhTriangles.push(new BVHTriangle(tri));
             }
         }
+        this.buildBVH();
         this.setData();
     }
 
@@ -93,6 +95,7 @@ export class Mesh {
     }
 
     prepareGPUBVH() {
+        let bvhList = [];
         let newTriList = [];
         let nodeQueue = [this.bvhNode];
         let i = 1;
@@ -101,20 +104,31 @@ export class Mesh {
             let n = nodeQueue.shift();
             if (n.child1 == null) {
                 let l = n.bvhTris.length;
-                this.bvhList.push(new GpuBVHNode(n.a, n.b, l, tCount + this.triStart));
+                bvhList.push(new GpuBVHNode(n.a, n.b, l, tCount));
                 tCount += l;
                 for (let j = 0; j < l; j++) {
                     newTriList.push(this.triangles[n.bvhTris[j].index]);
                 }
             } else {
-                this.bvhList.push(new GpuBVHNode(n.a, n.b, 0, i + bvhOffset));
+                bvhList.push(new GpuBVHNode(n.a, n.b, 0, i + bvhOffset));
                 i += 2;
                 nodeQueue.push(n.child1);
                 nodeQueue.push(n.child2);
             }
         }
+        this.bvhData = new Float32Array(bvhList.length * 8);
+        const u32View = new Uint32Array(this.bvhData.buffer);
+        for (let i = 0; i < bvhList.length; i++) {
+            let node = bvhList[i];
+            let offset = i * 8;
+            this.bvhData.set(node.a, offset);
+            this.bvhData.set(node.b, offset + 4);
+            u32View.set([node.triCount], offset + 3);
+            u32View.set([node.index], offset + 7);
+        }
+
         this.triangles = newTriList;
         this.rootNode = bvhOffset;
-        bvhOffset += this.bvhList.length;
+        bvhOffset += bvhList.length;
     }
 }

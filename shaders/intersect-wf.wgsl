@@ -54,6 +54,7 @@ const TMAX = 10000.0;
     let triCount = arrayLength(&triangles);
 
     let ray = rayQueue[id.x];
+    let inverseDir = vec3f(1.0) / ray.dir;
     var hr: HitRecord;
     hr.t = TMAX;
 
@@ -126,3 +127,12 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> HitRecord {
     hr.normal = a * v1.normal + b * v2.normal + c * v3.normal;
     return hr;
 }
+
+fn hitBox(ray: Ray, invDir: vec3f, bvhNode: BVHNode, t: f32) -> f32 {
+    let t1 = (bvhNode.a - ray.orig) * invDir;
+    let t2 = (bvhNode.b - ray.orig) * invDir;
+    let tmin = min(min(min(t1.x, t2.x), min(t1.y, t2.y)), min(t1.z, t2.z));
+    let tmax = max(max(max(t1.x, t2.x), max(t1.y, t2.y)), max(t1.z, t2.z));
+    return select(TMAX, tmin, tmax >= tmin && tmin < t && tmax > EPSILON);
+}
+

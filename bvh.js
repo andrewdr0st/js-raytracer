@@ -1,6 +1,8 @@
 const BVH_MAX_DEPTH = 16;
+const splitChecks = [0.2, 0.35, 0.5, 0.65, 0.8];
 
-class GpuBVHNode {
+
+export class GpuBVHNode {
     constructor(a, b, triCount, index) {
         this.a = a;
         this.b = b;
@@ -9,7 +11,7 @@ class GpuBVHNode {
     }
 }
 
-class BVHNode {
+export class BVHNode {
     constructor(mesh, bvhTris, depth) {
         this.mesh = mesh;
         this.bvhTris = bvhTris;
@@ -32,10 +34,10 @@ class BVHNode {
 
     findChildren() {
         let split = null;
-        let bestCost = 100000000000000.0;
+        let bestCost = this.cost();
         for (let d = 0; d < 3; d++) {
-            for (let i = 1; i < 3; i++) {
-                let s = i / (i + 1);
+            for (let i = 0; i < splitChecks.length; i++) {
+                let s = splitChecks[i];
                 let splitArray = this.splitTris(d, s);
                 if (splitArray[0].length == 0 || splitArray[1].length == 0) {
                     continue;

@@ -5,6 +5,7 @@ export let sceneBindGroupLayout;
 export let sceneBindGroup;
 let vertexBuffer;
 let triangleBuffer;
+let bvhBuffer;
 
 export class Scene {
     constructor() {
@@ -22,6 +23,7 @@ export class Scene {
         this.setupObjects();
         this.createVertexBuffer();
         this.createTriangleBuffer();
+        this.createBvhBuffer();
     }
 
     setupCamera(w, h) {
@@ -52,7 +54,8 @@ export class Scene {
             entries: [
                 {binding: 0, resource: {buffer: cameraBuffer}},
                 {binding: 1, resource: {buffer: vertexBuffer}},
-                {binding: 2, resource: {buffer: triangleBuffer}}
+                {binding: 2, resource: {buffer: triangleBuffer}},
+                {binding: 3, resource: {buffer: bvhBuffer}}
             ]
         });
     }
@@ -74,6 +77,15 @@ export class Scene {
         });
         device.queue.writeBuffer(triangleBuffer, 0, this.meshList[0].triangleData);
     }
+
+    createBvhBuffer() {
+        bvhBuffer = device.createBuffer({
+            label: "bvh buffer",
+            size: this.meshList[0].bvhData.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+        device.queue.writeBuffer(bvhBuffer, 0, this.meshList[0].bvhData);
+    }
 }
 
 export function createSceneBindGroupLayout() {
@@ -90,6 +102,10 @@ export function createSceneBindGroupLayout() {
                 buffer: { type: "read-only-storage" }
             }, {//triangles
                 binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {//bvh
+                binding: 3,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
             }
