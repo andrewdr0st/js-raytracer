@@ -20,7 +20,7 @@ struct BVHNode {
     a: vec3f,
     triCount: u32,
     b: vec3f,
-    index: u32
+    idx: u32
 }
 
 struct QueueHeader {
@@ -41,6 +41,7 @@ const TMAX = 10000.0;
 
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
+@group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
@@ -52,19 +53,47 @@ const TMAX = 10000.0;
     }
 
     let triCount = arrayLength(&triangles);
+    var bvhStack = array<u32, 24>();
 
     let ray = rayQueue[id.x];
     let inverseDir = vec3f(1.0) / ray.dir;
     var hr: HitRecord;
     hr.t = TMAX;
 
-    for (var i: u32 = 0; i < triCount; i++) {
-        let triHr = hitTriangle(triangles[i], ray);
-        if (triHr.t < hr.t) {
-            hr = triHr;
+    var bptr: i32 = 0;
+    bvhStack[0] = 0;
+    while (bptr >= 0) {
+        let b = bvh[bvhStack[bptr]];
+        if (b.triCount == 0) {
+            let cidx1 = b.idx;
+            let cidx2 = b.idx + 1;
+            let child1 = bvh[cidx1];
+            let child2 = bvh[cidx2];
+            let dist1 = hitBox(ray, inverseDir, child1, hr.t);
+            let dist2 = hitBox(ray, inverseDir, child2, hr.t);
+            let childOrder = select(vec2u(cidx1, cidx2), vec2u(cidx2, cidx1), dist1 > dist2);
+            let minDist = min(dist1, dist2);
+            let maxDist = max(dist1, dist2);
+            if (maxDist < TMAX) {
+                bvhStack[bptr] = childOrder.y;
+                bvhStack[bptr + 1] = childOrder.x;
+                bptr++;
+            } else if (minDist < TMAX) {
+                bvhStack[bptr] = childOrder.x;
+            } else {
+                bptr--;
+            }
+        } else {
+            for (var i: u32 = 0; i < b.triCount; i++) {
+                let triHr = hitTriangle(triangles[i + b.idx], ray);
+                if (triHr.t < hr.t) {
+                    hr = triHr;
+                }
+            }
+            bptr--;
         }
     }
-    
+
     if (hr.t < TMAX) {
         hr.pos = ray.dir * hr.t + ray.orig;
         hr.dir = ray.dir;
@@ -133,6 +162,6 @@ fn hitBox(ray: Ray, invDir: vec3f, bvhNode: BVHNode, t: f32) -> f32 {
     let t2 = (bvhNode.b - ray.orig) * invDir;
     let tmin = min(min(min(t1.x, t2.x), min(t1.y, t2.y)), min(t1.z, t2.z));
     let tmax = max(max(max(t1.x, t2.x), max(t1.y, t2.y)), max(t1.z, t2.z));
-    return select(TMAX, tmin, tmax >= tmin && tmin < t && tmax > EPSILON);
+    return select(TMAX, tmin, tmax > tmin && tmin < t && tmin > EPSILON);
 }
 
