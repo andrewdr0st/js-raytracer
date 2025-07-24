@@ -1,12 +1,15 @@
 const epsilonV = [0.0001, 0.0001, 0.0001];
 
-class SceneObject {
+export class SceneObject {
+    /**
+     * @param {Mesh} mesh 
+     * @param {Material} mat 
+     */
     constructor(mesh, mat) {
         this.translateV = [0, 0, 0];
         this.scaleV = [1, 1, 1];
         this.rotateQ = [1, 0, 0, 0];
-        this.rootNode = mesh.rootNode;
-        this.material = mat;
+        this.infoData = new Uint32Array([mesh.rootNode, mat.id]);
     }
 
     translate(x, y, z) {
@@ -19,25 +22,5 @@ class SceneObject {
 
     rotate(axis, theta) {
         this.rotateQ = qmult(this.rotateQ, axisAngleToQuaternion(axis, deg2rad(theta)));
-    }
-
-    getTranslate() {
-        return new Float32Array(this.translateV);
-    }
-
-    getScale() {
-        return new Float32Array(this.scaleV);
-    }
-
-    getRotate() {
-        return new Float32Array(this.rotateQ);
-    }
-
-    getMaterial() {
-        return new Int32Array([this.material]);
-    }
-
-    getRootNode() {
-        return new Uint32Array([this.rootNode])
     }
 }

@@ -6,6 +6,8 @@ export let sceneBindGroup;
 let vertexBuffer;
 let triangleBuffer;
 let bvhBuffer;
+let objectInfoBuffer;
+let objectTransformBuffer;
 
 export class Scene {
     constructor() {
@@ -21,9 +23,7 @@ export class Scene {
         this.setupMaterials();
         await this.loadMeshes();
         this.setupObjects();
-        this.createVertexBuffer();
-        this.createTriangleBuffer();
-        this.createBvhBuffer();
+        this.createBuffers();
     }
 
     setupCamera(w, h) {
@@ -55,9 +55,19 @@ export class Scene {
                 {binding: 0, resource: {buffer: cameraBuffer}},
                 {binding: 1, resource: {buffer: vertexBuffer}},
                 {binding: 2, resource: {buffer: triangleBuffer}},
-                {binding: 3, resource: {buffer: bvhBuffer}}
+                {binding: 3, resource: {buffer: bvhBuffer}},
+                {binding: 4, resource: {buffer: objectInfoBuffer}},
+                {binding: 5, resource: {buffer: objectTransformBuffer}}
             ]
         });
+    }
+
+    createBuffers() {
+        this.createVertexBuffer();
+        this.createTriangleBuffer();
+        this.createBvhBuffer();
+        this.createObjectInfoBuffer();
+        this.createObjectTransformBuffer();
     }
 
     createVertexBuffer() {
@@ -86,6 +96,22 @@ export class Scene {
         });
         device.queue.writeBuffer(bvhBuffer, 0, this.meshList[0].bvhData);
     }
+
+    createObjectInfoBuffer() {
+        objectInfoBuffer = device.createBuffer({
+            label: "object info buffer",
+            size: 16,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+    }
+
+    createObjectTransformBuffer() {
+            objectTransformBuffer = device.createBuffer({
+            label: "object transform buffer",
+            size: 128,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+    }
 }
 
 export function createSceneBindGroupLayout() {
@@ -106,6 +132,14 @@ export function createSceneBindGroupLayout() {
                 buffer: { type: "read-only-storage" }
             }, {//bvh
                 binding: 3,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {//object info
+                binding: 4,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            }, {//object transform
+                binding: 5,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
             }

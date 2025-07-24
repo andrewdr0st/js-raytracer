@@ -3,24 +3,36 @@ struct Ray {
     pixelIndex: u32,
     dir: vec3f,
     bounceCount: u32
-};
+}
 
 struct Vertex {
     pos: vec3f,
     u: f32,
     normal: vec3f,
     v: f32
-};
+}
 
 struct Triangle {
     vertices: vec3u
-};
+}
 
+//When traversing the TLAS, triCount > 0 represents a leaf node which contains an object
 struct BVHNode {
     a: vec3f,
     triCount: u32,
     b: vec3f,
     idx: u32
+}
+
+struct ObjectTransform {
+    transform: mat4x4f,
+    transformInv: mat4x4f
+}
+
+struct ObjectInfo {
+    rootNode: u32,
+    material: u32,
+    tex: u32
 }
 
 struct QueueHeader {
@@ -33,7 +45,8 @@ struct HitRecord {
     pixelIndex: u32,
     normal: vec3f,
     t: f32,
-    dir: vec3f
+    dir: vec3f,
+    uv: vec2f
 }
 
 const EPSILON = 0.00001;
@@ -152,7 +165,7 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> HitRecord {
         return hr;
     }
     hr.t = t;
-    let tc = vec2f(a * v1.u + b * v2.u + c * v3.u, a * v1.v + b * v2.v + c * v3.v);
+    hr.uv = vec2f(a * v2.u + b * v3.u + c * v1.u, a * v2.v + b * v3.v + c * v1.v);
     hr.normal = a * v1.normal + b * v2.normal + c * v3.normal;
     return hr;
 }
