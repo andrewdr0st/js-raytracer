@@ -26,7 +26,7 @@ struct HitRecord {
 
     let imgW = textureDimensions(tex).x;
     let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-    let col = vec3f(hitRec.uv, 0);
+    let col = abs(hitRec.normal);
 
     textureStore(tex, imgPos, vec4f(col, 1));
 }

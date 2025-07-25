@@ -49,12 +49,14 @@ struct HitRecord {
     uv: vec2f
 }
 
-const EPSILON = 0.00001;
+const EPSILON = 0.000001;
 const TMAX = 10000.0;
 
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
+@group(0) @binding(4) var<storage, read> objectInfos: array<ObjectInfo>;
+@group(0) @binding(5) var<storage, read> objectTransforms: array<ObjectTransform>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
@@ -69,7 +71,12 @@ const TMAX = 10000.0;
     var bvhStack = array<u32, 24>();
 
     let ray = rayQueue[id.x];
-    let inverseDir = vec3f(1.0) / ray.dir;
+
+    var t_ray: Ray;
+    t_ray.dir = (objectTransforms[0].transformInv * vec4f(ray.dir, 0)).xyz;
+    t_ray.orig = (objectTransforms[0].transformInv * vec4f(ray.orig, 1)).xyz;
+    let inverseDir = vec3f(1.0) / t_ray.dir;
+
     var hr: HitRecord;
     hr.t = TMAX;
 
@@ -82,8 +89,8 @@ const TMAX = 10000.0;
             let cidx2 = b.idx + 1;
             let child1 = bvh[cidx1];
             let child2 = bvh[cidx2];
-            let dist1 = hitBox(ray, inverseDir, child1, hr.t);
-            let dist2 = hitBox(ray, inverseDir, child2, hr.t);
+            let dist1 = hitBox(t_ray, inverseDir, child1, hr.t);
+            let dist2 = hitBox(t_ray, inverseDir, child2, hr.t);
             let childOrder = select(vec2u(cidx1, cidx2), vec2u(cidx2, cidx1), dist1 > dist2);
             let minDist = min(dist1, dist2);
             let maxDist = max(dist1, dist2);
@@ -98,7 +105,7 @@ const TMAX = 10000.0;
             }
         } else {
             for (var i: u32 = 0; i < b.triCount; i++) {
-                let triHr = hitTriangle(triangles[i + b.idx], ray);
+                let triHr = hitTriangle(triangles[i + b.idx], t_ray);
                 if (triHr.t < hr.t) {
                     hr = triHr;
                 }
@@ -110,6 +117,7 @@ const TMAX = 10000.0;
     if (hr.t < TMAX) {
         hr.pos = ray.dir * hr.t + ray.orig;
         hr.dir = ray.dir;
+        hr.normal = normalize((objectTransforms[0].transform * vec4f(hr.normal, 0)).xyz);
         hr.pixelIndex = ray.pixelIndex;
 
         let hitQueueHeader = &queueHeaders[1];
@@ -173,8 +181,8 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> HitRecord {
 fn hitBox(ray: Ray, invDir: vec3f, bvhNode: BVHNode, t: f32) -> f32 {
     let t1 = (bvhNode.a - ray.orig) * invDir;
     let t2 = (bvhNode.b - ray.orig) * invDir;
-    let tmin = min(min(min(t1.x, t2.x), min(t1.y, t2.y)), min(t1.z, t2.z));
-    let tmax = max(max(max(t1.x, t2.x), max(t1.y, t2.y)), max(t1.z, t2.z));
-    return select(TMAX, tmin, tmax > tmin && tmin < t && tmin > EPSILON);
+    let tmin = max(max(min(t1.x, t2.x), min(t1.y, t2.y)), min(t1.z, t2.z));
+    let tmax = min(min(max(t1.x, t2.x), max(t1.y, t2.y)), max(t1.z, t2.z));
+    return select(TMAX, tmin, tmax >= tmin && tmin < t && tmax > EPSILON);
 }
 

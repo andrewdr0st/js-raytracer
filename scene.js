@@ -1,5 +1,6 @@
 import { device } from "./gpuManager.js";
 import { cameraBuffer } from "./camera.js";
+import { SceneObject, OBJECT_INFO_BYTE_SIZE, OBJECT_TRANSFORM_BYTE_SIZE } from "./structures/sceneObject.js";
 
 export let sceneBindGroupLayout;
 export let sceneBindGroup;
@@ -42,9 +43,17 @@ export class Scene {
 
     }
 
+    /**
+     * Creates a new scene object, adds it to the scene, and returns the created object
+     * @param {Number} meshId 
+     * @param {Number} matId 
+     * @returns {SceneObject}
+     */
     addObject(meshId, matId) {
-        this.objectList.push(new SceneObject(this.meshList[meshId], matId));
+        let obj = new SceneObject(this.meshList[meshId], matId);
+        this.objectList.push(obj);
         this.objectCount++;
+        return obj;
     }
 
     createBindGroup() {
@@ -100,17 +109,27 @@ export class Scene {
     createObjectInfoBuffer() {
         objectInfoBuffer = device.createBuffer({
             label: "object info buffer",
-            size: 16,
+            size: OBJECT_INFO_BYTE_SIZE * this.objectCount,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
+        let offset = 0;
+        for (let i = 0; i < this.objectCount; i++) {
+            device.queue.writeBuffer(objectInfoBuffer, offset, this.objectList[i].infoData);
+            offset += OBJECT_INFO_BYTE_SIZE;
+        }
     }
 
     createObjectTransformBuffer() {
             objectTransformBuffer = device.createBuffer({
             label: "object transform buffer",
-            size: 128,
+            size: OBJECT_TRANSFORM_BYTE_SIZE * this.objectCount,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
+        let offset = 0;
+        for (let i = 0; i < this.objectCount; i++) {
+            device.queue.writeBuffer(objectTransformBuffer, offset, this.objectList[i].transformData);
+            offset += OBJECT_TRANSFORM_BYTE_SIZE;
+        }
     }
 }
 
