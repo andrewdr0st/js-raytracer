@@ -85,7 +85,7 @@ export class BVHNode {
             this.b = vec3.max(this.b, t.triMax);
         }
         this.a = vec3.sub(this.a, [0.00001, 0.00001, 0.00001]);
-        this.b = vec3.sub(this.b, [0.00001, 0.00001, 0.00001]);
+        this.b = vec3.add(this.b, [0.00001, 0.00001, 0.00001]);
     }
 
     cost() {
@@ -93,5 +93,22 @@ export class BVHNode {
         let y = this.b[1] - this.a[1];
         let z = this.b[2] - this.a[2];
         return this.bvhTris.length * (x * (y + z) + y * z);
+    }
+}
+
+export class TLASNode {
+    constructor(a, b) {
+        this.a = a;
+        this.b = b;
+        this.child1 = null;
+        this.child2 = null;
+        this.object = null;
+    }
+
+    cost() {
+        let x = this.b[0] - this.a[0];
+        let y = this.b[1] - this.a[1];
+        let z = this.b[2] - this.a[2];
+        return x * (y + z) + y * z;
     }
 }

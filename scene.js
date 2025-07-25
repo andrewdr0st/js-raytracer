@@ -1,6 +1,8 @@
 import { device } from "./gpuManager.js";
 import { cameraBuffer } from "./camera.js";
 import { SceneObject, OBJECT_INFO_BYTE_SIZE, OBJECT_TRANSFORM_BYTE_SIZE } from "./structures/sceneObject.js";
+import { TLASNode } from "./bvh.js";
+const { vec3 } = wgpuMatrix;
 
 export let sceneBindGroupLayout;
 export let sceneBindGroup;
@@ -24,6 +26,7 @@ export class Scene {
         this.setupMaterials();
         await this.loadMeshes();
         this.setupObjects();
+        //this.buildTLAS();
         this.createBuffers();
     }
 
@@ -131,6 +134,71 @@ export class Scene {
             offset += OBJECT_TRANSFORM_BYTE_SIZE;
         }
     }
+
+    buildTLAS() {
+        let nodes = [];
+        for (let i = 0; i < this.objectCount; i++) {
+            let obj = this.objectList[i];
+            let n = new TLASNode(obj.a, obj.b);
+            n.object = obj;
+            nodes.push(n);
+        }
+        console.log(nodes);
+        this.tlas = new Array(this.objectCount * 2 - 1);
+        let endPtr = this.objectCount * 2 - 2;
+        let nodeAIdx = 0;
+        let nodeA = nodes[0];
+        let nodeBIdx = findBestMatch(nodeA, 0, nodes);
+        let nodeB = nodes[nodeBIdx];
+        while (nodes.length > 1) {
+            let nodeCIdx = findBestMatch(nodeB, nodeBIdx, nodes);
+            if (nodeAIdx == nodeCIdx) {
+                nodes.splice(nodeAIdx, 1);
+                nodes.splice(nodeBIdx, 1);
+                let newNode = new TLASNode(vec3.min(nodeA.a, nodeB.a), vec3.max(nodeA.b, nodeB.b));
+                newNode.child1 = nodeA;
+                this.tlas[endPtr - 1] = nodeA;
+                newNode.child2 = nodeB;
+                this.tlas[endPtr] = nodeB;
+                endPtr -= 2;
+                nodes.push(newNode);
+                nodeAIdx = 0;
+                nodeA = nodes[0];
+                nodeBIdx = findBestMatch(nodeA, 0, nodes);
+                nodeB = nodes[nodeBIdx];
+            } else {
+                nodeAIdx = nodeBIdx;
+                nodeA = nodeB;
+                nodeBIdx = nodeCIdx;
+                nodeB = nodes[nodeBIdx];
+            }
+        }
+        // let finalNode = new TLASNode(vec3.min(nodes[0].a, nodes[1].a), vec3.max(nodes[0].b, nodes[1].b));
+        // finalNode.child1 = nodes[0];
+        // this.tlas[1] = nodes[0];
+        // finalNode.child2 = nodes[1];
+        // this.tlas[2] = nodes[1];
+        // this.tlas[0] = finalNode;
+        console.log(this.tlas);
+    }
+}
+
+function findBestMatch(node, nodeIdx, nodeList) {
+    let best = 1e+30;
+    let matchIdx = -1;
+    for (let i = 0; i < nodeList.length; i++) {
+        let n = nodeList[i];
+        if (i == nodeIdx) {
+            continue;
+        }
+        let combined = new TLASNode(vec3.min(node.a, n.a), vec3.max(node.b, n.b));
+        let cost = combined.cost();
+        if (cost < best) {
+            matchIdx = i;
+            best = cost;
+        }
+    }
+    return matchIdx;
 }
 
 export function createSceneBindGroupLayout() {
