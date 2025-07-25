@@ -1,4 +1,5 @@
 import { device } from "./gpuManager.js";
+const { vec3, utils } = wgpuMatrix;
 
 const CAMERA_BYTE_SIZE = 128;
 export let cameraBuffer;
@@ -37,33 +38,33 @@ export class Camera {
     }
 
     init() {
-        let h = Math.tan(deg2rad(this.fov) / 2);
+        let h = Math.tan(utils.degToRad(this.fov) / 2);
         this.viewportH = 2.0 * h * this.focusDist;
         this.viewportW = this.viewportH * (this.imgW / this.imgH);
 
-        this.lookTo = vnorm(this.lookTo);
-        this.lookAt = vadd(this.pos, this.lookTo);
-        this.right = vnorm(vcross(this.lookTo, this.up));
-        this.forward = vnorm(vcross(this.up, this.right));
+        this.lookTo = vec3.normalize(this.lookTo);
+        this.lookAt = vec3.add(this.pos, this.lookTo);
+        this.right = vec3.normalize(vec3.cross(this.lookTo, this.up));
+        this.forward = vec3.normalize(vec3.cross(this.up, this.right));
 
-        let w = vnorm(vsub(this.pos, this.lookAt));
-        let u = vnorm(vcross(this.up, w));
-        let v = vcross(w, u);
+        let w = vec3.normalize(vec3.sub(this.pos, this.lookAt));
+        let u = vec3.normalize(vec3.cross(this.up, w));
+        let v = vec3.cross(w, u);
 
-        this.viewportU = vscalar(u, this.viewportW);
-        this.viewportV = vscalar(vinv(v), this.viewportH);
+        this.viewportU = vec3.scale(u, this.viewportW);
+        this.viewportV = vec3.scale(vec3.scale(v, -1), this.viewportH);
 
-        this.pixelDeltaU = vdivide(this.viewportU, this.imgW);
-        this.pixelDeltaV = vdivide(this.viewportV, this.imgH);
+        this.pixelDeltaU = vec3.divScalar(this.viewportU, this.imgW);
+        this.pixelDeltaV = vec3.divScalar(this.viewportV, this.imgH);
 
-        let viewplanePos = vsub(this.pos, vscalar(w, this.focusDist));
-        let viewplaneVec = vadd(vdivide(this.viewportU, 2), vdivide(this.viewportV, 2));
-        this.viewportUpperLeft = vsub(viewplanePos, viewplaneVec);
-        this.topLeftPixel = vadd(this.viewportUpperLeft, vscalar(vadd(this.pixelDeltaU, this.pixelDeltaV), 0.5));
+        let viewplanePos = vec3.sub(this.pos, vec3.scale(w, this.focusDist));
+        let viewplaneVec = vec3.add(vec3.divScalar(this.viewportU, 2), vec3.divScalar(this.viewportV, 2));
+        this.viewportUpperLeft = vec3.sub(viewplanePos, viewplaneVec);
+        this.topLeftPixel = vec3.add(this.viewportUpperLeft, vec3.scale(vec3.add(this.pixelDeltaU, this.pixelDeltaV), 0.5));
 
-        let defocusRadius = this.focusDist * Math.tan(deg2rad(this.defocusAngle / 2));
-        this.defocusU = vscalar(u, defocusRadius);
-        this.defocusV = vscalar(v, defocusRadius);
+        let defocusRadius = this.focusDist * Math.tan(utils.degToRad(this.defocusAngle / 2));
+        this.defocusU = vec3.scale(u, defocusRadius);
+        this.defocusV = vec3.scale(v, defocusRadius);
     }
 
     /**
@@ -108,7 +109,7 @@ export class Camera {
     }
 
     setP(x, y, theta) {
-        theta = deg2rad(theta);
+        theta = utils.degToRad(theta);
         this.lookTo = [-Math.cos(theta), -0.5, -Math.sin(theta)];
         this.pos = [x * Math.cos(theta), y, x * Math.sin(theta)];
     }

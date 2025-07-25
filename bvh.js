@@ -1,3 +1,5 @@
+const { vec3 } = wgpuMatrix;
+
 const BVH_MAX_DEPTH = 16;
 const splitChecks = [0.2, 0.35, 0.5, 0.65, 0.8];
 
@@ -62,7 +64,7 @@ export class BVHNode {
 
     splitTris(dim, split) {
         let splitArray = [[], []];
-        let splitPoint = vadd(vscalar(this.a, 1 - split), vscalar(this.b, split));
+        let splitPoint = vec3.add(vec3.scale(this.a, 1 - split), vec3.scale(this.b, split));
         for (let i = 0; i < this.bvhTris.length; i++) {
             let t = this.bvhTris[i];
             if (t.triMid[dim] < splitPoint[dim]) {
@@ -79,11 +81,11 @@ export class BVHNode {
         this.b = this.bvhTris[0].triMax;
         for (let i = 1; i < this.bvhTris.length; i++) {
             let t = this.bvhTris[i];
-            this.a = vmin(this.a, t.triMin);
-            this.b = vmax(this.b, t.triMax);
+            this.a = vec3.min(this.a, t.triMin);
+            this.b = vec3.max(this.b, t.triMax);
         }
-        this.a = vsub(this.a, [0.00001, 0.00001, 0.00001]);
-        this.b = vadd(this.b, [0.00001, 0.00001, 0.00001]);
+        this.a = vec3.sub(this.a, [0.00001, 0.00001, 0.00001]);
+        this.b = vec3.sub(this.b, [0.00001, 0.00001, 0.00001]);
     }
 
     cost() {

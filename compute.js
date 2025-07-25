@@ -51,8 +51,6 @@ const objectSize = 160;
 const objectInfoSize = 48;
 const bvhNodeSize = 32;
 const materialSize = 48;
-const raySize = 32;
-const hitRecordSize = 48;
 const queueHeaderSize = 16;
 const bufferMax = 1024 * 1024 * 128;
 

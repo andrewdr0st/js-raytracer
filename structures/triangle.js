@@ -1,4 +1,5 @@
 import { Vertex } from "./vertex.js";
+const { vec3 } = wgpuMatrix;
 
 export const TRIANGLE_BYTE_SIZE = 16;
 export const TRIANGLE_U32_COUNT = 4;
@@ -39,8 +40,8 @@ export class BVHTriangle {
         let v1 = tri.v1.pos;
         let v2 = tri.v2.pos;
         let v3 = tri.v3.pos;
-        this.triMin = vmin(vmin(v1, v2), v3);
-        this.triMax = vmax(vmax(v1, v2), v3);
-        this.triMid = vscalar(vadd(this.triMin, this.triMax), 0.5);
+        this.triMin = vec3.min(vec3.min(v1, v2), v3);
+        this.triMax = vec3.max(vec3.max(v1, v2), v3);
+        this.triMid = vec3.scale(vec3.add(this.triMin, this.triMax), 0.5);
     }
 }
