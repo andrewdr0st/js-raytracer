@@ -26,7 +26,7 @@ export class Scene {
         this.setupMaterials();
         await this.loadMeshes();
         this.setupObjects();
-        //this.buildTLAS();
+        this.buildTLAS();
         this.createBuffers();
     }
 
@@ -154,7 +154,8 @@ export class Scene {
             let nodeCIdx = findBestMatch(nodeB, nodeBIdx, nodes);
             if (nodeAIdx == nodeCIdx) {
                 nodes.splice(nodeAIdx, 1);
-                nodes.splice(nodeBIdx, 1);
+                let bIdx = nodeAIdx < nodeBIdx ? nodeBIdx - 1 : nodeBIdx;
+                nodes.splice(bIdx, 1);
                 let newNode = new TLASNode(vec3.min(nodeA.a, nodeB.a), vec3.max(nodeA.b, nodeB.b));
                 newNode.child1 = nodeA;
                 this.tlas[endPtr - 1] = nodeA;
@@ -173,18 +174,13 @@ export class Scene {
                 nodeB = nodes[nodeBIdx];
             }
         }
-        // let finalNode = new TLASNode(vec3.min(nodes[0].a, nodes[1].a), vec3.max(nodes[0].b, nodes[1].b));
-        // finalNode.child1 = nodes[0];
-        // this.tlas[1] = nodes[0];
-        // finalNode.child2 = nodes[1];
-        // this.tlas[2] = nodes[1];
-        // this.tlas[0] = finalNode;
+        this.tlas[0] = nodes[0];
         console.log(this.tlas);
     }
 }
 
 function findBestMatch(node, nodeIdx, nodeList) {
-    let best = 1e+30;
+    let best = 1000000000000;
     let matchIdx = -1;
     for (let i = 0; i < nodeList.length; i++) {
         let n = nodeList[i];

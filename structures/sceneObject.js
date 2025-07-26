@@ -94,7 +94,6 @@ export class SceneObject {
         }
         this.a = vec3.sub(minV, EPSILON_V);
         this.b = vec3.add(maxV, EPSILON_V);
-        console.log("hello");
     }
 }
 
