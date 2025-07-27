@@ -14,12 +14,13 @@ export class SceneObject {
      * @param {Mesh} mesh 
      * @param {Material} mat 
      */
-    constructor(mesh, mat) {
+    constructor(mesh, mat, texture) {
         this.translateV = [0, 0, 0];
         this.scaleV = [1, 1, 1];
         this.rotateQ = [1, 0, 0, 0];
         this.mesh = mesh;
-        this.infoData = new Uint32Array([mesh.rootNode, mat.id]);
+        this.texture = texture;
+        this.infoData = new Uint32Array([mesh.rootNode, mat.id, texture]);
         this.transformData = new Float32Array(OBJECT_TRANSFORM_F32_COUNT);
     }
 

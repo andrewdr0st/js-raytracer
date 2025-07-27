@@ -25,9 +25,3 @@ class Material {
         return new Int32Array([this.tex, this.texA, this.useBDRF]);
     }
 }
-
-async function loadImage(path) {
-    const response = await fetch("textures/" + path);
-    const blob = await response.blob();
-    return await createImageBitmap(blob);
-}

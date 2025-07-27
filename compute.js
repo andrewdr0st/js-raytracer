@@ -2,6 +2,7 @@ import { device, computeContext } from "./gpuManager.js";
 import { Pipeline } from "./pipeline.js";
 import { sceneBindGroupLayout, sceneBindGroup, createSceneBindGroupLayout } from "./scene.js";
 import { createCameraBuffer } from "./camera.js";
+import { texturesBindGroupLayout, texturesBindGroup, createTexturesBindGroup, createTexturesBindGroupLayout } from "./structures/Texture.js";
 
 let raytracePipeline;
 let npPipeline;
@@ -20,22 +21,15 @@ let normalsTexture;
 let positionsTexture;
 let finalTexture;
 
-let textureArray8;
-let texList8;
-let textureArray16;
-let texList16;
-
 let raytraceTextureLayout;
 let npTextureLayout;
 let denoiseTextureLayout;
 let denoiseNpLayout;
-let materialsLayout;
 let denoiseParamsLayout;
 let transformLayout;
 let queueLayout;
 
 let raytraceTextureBindGroup;
-let materialsBindGroup;
 let npTextureBindGroup;
 let denoiseParamsBindGroup;
 let finalTextureBindGroup;
@@ -47,10 +41,6 @@ let denoiseParamsBuffer;
 let headerBuffer;
 let dispatchBuffer;
 
-const objectSize = 160;
-const objectInfoSize = 48;
-const bvhNodeSize = 32;
-const materialSize = 48;
 const queueHeaderSize = 16;
 const bufferMax = 1024 * 1024 * 128;
 
@@ -67,10 +57,9 @@ export async function setupGPUData(scene, staticRender=false) {
 
 function setupBindGroups(scene) {
     createRaytraceTextureBindGroup(!scene.camera.realtimeMode);
-    //createObjectsBindGroup(scene);
-    //createMaterialsBindGroup(scene.materialList);
     createCameraBuffer();
     scene.createBindGroup();
+    createTexturesBindGroup();
     createQueueBindGroup();
     if (runDenoiser) {
         createDenoiseBindGroups();
@@ -239,25 +228,6 @@ function createBindGroupLayouts(staticRender) {
         ]
     });
 
-    materialsLayout = device.createBindGroupLayout({
-        label: "materials bind group layout",
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.COMPUTE,
-                texture: {format: "rgba8unorm", viewDimension: "2d-array"}
-            }, {
-                binding: 2,
-                visibility: GPUShaderStage.COMPUTE,
-                texture: {format: "rgba8unorm", viewDimension: "2d-array"}
-            }
-        ]
-    });
-
     denoiseParamsLayout = device.createBindGroupLayout({
         label: "denoise params layout",
         entries: [
@@ -308,6 +278,7 @@ function createBindGroupLayouts(staticRender) {
     });
 
     createSceneBindGroupLayout();
+    createTexturesBindGroupLayout();
 }
 
 async function createPipelines() {
@@ -315,10 +286,11 @@ async function createPipelines() {
         bindGroupLayouts: [
             sceneBindGroupLayout,
             raytraceTextureLayout,
-            queueLayout
+            queueLayout,
+            texturesBindGroupLayout
         ]
     });
-    const wavefrontBindGroups = [sceneBindGroup, raytraceTextureBindGroup, queueBindGroup, null];
+    const wavefrontBindGroups = [sceneBindGroup, raytraceTextureBindGroup, queueBindGroup, texturesBindGroup];
 
     spawnPipeline = new Pipeline("spawnrays-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
     intersectPipeline = new Pipeline("intersect-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
@@ -378,185 +350,6 @@ function createRaytraceTextureBindGroup(staticRender) {
             ]
         });
     }
-}
-
-function createObjectsBindGroup(scene) {
-    let meshList = scene.meshList;
-    let sphereList = scene.sphereList;
-    let objectList = scene.objectList;
-    let objectCount = scene.objectCount;
-
-    const spheresBuffer = device.createBuffer({
-        label: "spheres buffer",
-        size: sphereList.length * sphereSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < sphereList.length; i++) {
-        let s = sphereList[i];
-        device.queue.writeBuffer(spheresBuffer, i * sphereSize, new Float32Array(s.getValues()));
-        device.queue.writeBuffer(spheresBuffer, i * sphereSize + 16, new Int32Array(s.getM()));
-    }
-
-    let triOffset = 0;
-    let vOffset = 0;
-    let uvOffset = 0;
-    let nOffset = 0;
-    let oOffset = 0;
-    let bOffset = 0;
-
-    const triangleBuffer = device.createBuffer({
-        label: "triangle buffer",
-        size: totalTris * triangleSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < meshList.length; i++) {
-        let m = meshList[i];
-        device.queue.writeBuffer(triangleBuffer, triOffset, m.getTriangles());
-        triOffset += m.tCount * triangleSize;
-    }    
-
-    const trianglePointBuffer = device.createBuffer({
-        label: "triangle point buffer",
-        size: (vertexOffset + 1) * vertexSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < meshList.length; i++) {
-        let m = meshList[i];
-        device.queue.writeBuffer(trianglePointBuffer, vOffset, m.getVerticies());
-        vOffset += m.vCount * vertexSize;
-    }
-
-    const triangleUvBuffer = device.createBuffer({
-        label: "triangle uv buffer",
-        size: (tcOffset + 1) * uvSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < meshList.length; i++) {
-        let m = meshList[i];
-        device.queue.writeBuffer(triangleUvBuffer, uvOffset, m.getUvs());
-        uvOffset += m.tcCount * uvSize;
-    }
-
-    const triangleNormalsBuffer = device.createBuffer({
-        label: "triangle normals buffer",
-        size: (vnormalOffset + 1) * normalsSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < meshList.length; i++) {
-        let m = meshList[i];
-        device.queue.writeBuffer(triangleNormalsBuffer, nOffset, m.getNormals());
-        nOffset += m.nCount * normalsSize;
-    }
-
-    const objectsBuffer = device.createBuffer({
-        label: "objects buffer",
-        size: objectCount * objectSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-
-    const objectsInfoBuffer = device.createBuffer({
-        label: "objects info buffer",
-        size: objectCount * objectInfoSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let i = 0; i < objectCount; i++) {
-        let o = objectList[i];
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset, o.getTranslate());
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 12, o.getRootNode());
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 16, o.getScale());
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 28, o.getMaterial());
-        device.queue.writeBuffer(objectsInfoBuffer, oOffset + 32, o.getRotate());
-        oOffset += objectInfoSize;
-    }
-
-    const bvhNodeBuffer = device.createBuffer({
-        label: "bvh node buffer",
-        size: bvhOffset * bvhNodeSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    for (let j = 0; j < meshList.length; j++) {
-        let m = meshList[j];
-        for (let i = 0; i < m.bvhList.length; i++) {
-            let b = m.bvhList[i];
-            device.queue.writeBuffer(bvhNodeBuffer, bOffset, new Float32Array(b.a));
-            device.queue.writeBuffer(bvhNodeBuffer, bOffset + 12, new Uint32Array([b.triCount]));
-            device.queue.writeBuffer(bvhNodeBuffer, bOffset + 16, new Float32Array(b.b));
-            device.queue.writeBuffer(bvhNodeBuffer, bOffset + 28, new Uint32Array([b.index]));
-            bOffset += bvhNodeSize;
-        }
-    }
-
-    objectsBindGroup = device.createBindGroup({
-        label: "objects bind group",
-        layout: objectsLayout,
-        entries: [
-            { binding: 0, resource: { buffer: triangleBuffer } },
-            { binding: 1, resource: { buffer: trianglePointBuffer } },
-            { binding: 2, resource: { buffer: triangleUvBuffer } },
-            { binding: 3, resource: { buffer: triangleNormalsBuffer } },
-            { binding: 4, resource: { buffer: objectsBuffer } },
-            { binding: 5, resource: { buffer: bvhNodeBuffer } },
-            { binding: 6, resource: { buffer: spheresBuffer } }
-        ]
-    });
-
-    transformBindGroup = device.createBindGroup({
-        label: "transform bind group",
-        layout: transformLayout,
-        entries: [
-            { binding: 0, resource: { buffer: bvhNodeBuffer } },
-            { binding: 1, resource: { buffer: objectsBuffer } },
-            { binding: 2, resource: { buffer: objectsInfoBuffer } }
-        ]
-    });
-}
-
-function createMaterialsBindGroup(materialList) {
-    textureArray8 = device.createTexture({
-        size: [8, 8, texList8.length],
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
-    });
-    for (let i = 0; i < texList8.length; i++) {
-        device.queue.copyExternalImageToTexture({source: texList8[i]}, {texture: textureArray8, origin: {z: i}}, [8, 8]);
-    }
-
-    textureArray16 = device.createTexture({
-        size: [16, 16, texList16.length],
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
-    });
-    for (let i = 0; i < texList16.length; i++) {
-        device.queue.copyExternalImageToTexture({source: texList16[i]}, {texture: textureArray16, origin: {z: i}}, [16, 16]);
-    }
-
-    let materials = [];
-    for (let i = 0; i < materialList.length; i++) {
-        materials = materials.concat(materialList[i].getValues());
-    }
-    materials = new Float32Array(materials);
-
-    const materialBuffer = device.createBuffer({
-        label: "materials buffer",
-        size: materialList.length * materialSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(materialBuffer, 0, materials);
-
-    for(let i = 0; i < materialList.length; i++) {
-        let t = materialList[i].getTex();
-        device.queue.writeBuffer(materialBuffer, (i + 1) * materialSize - 16, t);
-    }
-
-    materialsBindGroup = device.createBindGroup({
-        label: "materials bind group",
-        layout: materialsLayout,
-        entries: [
-            { binding: 0, resource: { buffer : materialBuffer } },
-            { binding: 1, resource: textureArray8.createView() },
-            { binding: 2, resource: textureArray16.createView() }
-        ]
-    });
 }
 
 function createQueueBindGroup() {

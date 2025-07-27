@@ -25,8 +25,9 @@ export class Scene {
 
     async setup(w, h) {
         this.setupCamera(w, h);
-        this.setupMaterials();
         await this.loadMeshes();
+        await this.loadTextures();
+        this.setupMaterials();
         this.setupObjects();
         this.buildTLAS();
         this.createBuffers();
@@ -37,6 +38,10 @@ export class Scene {
     }
 
     async loadMeshes() {
+
+    }
+
+    async loadTextures() {
 
     }
 
