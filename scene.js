@@ -12,6 +12,8 @@ let bvhBuffer;
 let objectInfoBuffer;
 let objectTransformBuffer;
 
+const TLAS_NODE_FIELD_COUNT = 8;
+
 export class Scene {
     constructor() {
         this.camera;
@@ -103,10 +105,12 @@ export class Scene {
     createBvhBuffer() {
         bvhBuffer = device.createBuffer({
             label: "bvh buffer",
-            size: this.meshList[0].bvhData.byteLength,
+            size: this.tlasData.byteLength + this.meshList[0].bvhData.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
-        device.queue.writeBuffer(bvhBuffer, 0, this.meshList[0].bvhData);
+        device.queue.writeBuffer(bvhBuffer, 0, this.tlasData);
+        this.meshList[0].offsetBVH(3);
+        device.queue.writeBuffer(bvhBuffer, this.tlasData.byteLength, this.meshList[0].bvhData)
     }
 
     createObjectInfoBuffer() {
@@ -141,9 +145,9 @@ export class Scene {
             let obj = this.objectList[i];
             let n = new TLASNode(obj.a, obj.b);
             n.object = obj;
+            n.index = i;
             nodes.push(n);
         }
-        console.log(nodes);
         this.tlas = new Array(this.objectCount * 2 - 1);
         let endPtr = this.objectCount * 2 - 2;
         let nodeAIdx = 0;
@@ -161,6 +165,7 @@ export class Scene {
                 this.tlas[endPtr - 1] = nodeA;
                 newNode.child2 = nodeB;
                 this.tlas[endPtr] = nodeB;
+                newNode.index = endPtr - 1;
                 endPtr -= 2;
                 nodes.push(newNode);
                 nodeAIdx = 0;
@@ -175,12 +180,21 @@ export class Scene {
             }
         }
         this.tlas[0] = nodes[0];
-        console.log(this.tlas);
+        this.tlasData = new Float32Array(this.tlas.length * TLAS_NODE_FIELD_COUNT);
+        const u32View = new Uint32Array(this.tlasData.buffer);
+        for (let i = 0; i < this.tlas.length; i++) {
+            let node = this.tlas[i];
+            let offset = i * 8;
+            this.tlasData.set(node.a, offset);
+            this.tlasData.set(node.b, offset + 4);
+            u32View.set([node.object ? 1 : 0], offset + 3);
+            u32View.set([node.index], offset + 7);
+        }
     }
 }
 
 function findBestMatch(node, nodeIdx, nodeList) {
-    let best = 1000000000000;
+    let best = 1e+30;
     let matchIdx = -1;
     for (let i = 0; i < nodeList.length; i++) {
         let n = nodeList[i];

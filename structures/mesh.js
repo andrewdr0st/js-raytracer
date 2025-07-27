@@ -15,7 +15,7 @@ export class Mesh {
         this.bvhTriangles = [];
         this.bvhNode = null;
         this.bvhData;
-        this.rootNode = 0;
+        this.rootNode = 3;
     }
 
     /**
@@ -128,7 +128,14 @@ export class Mesh {
         }
 
         this.triangles = newTriList;
-        this.rootNode = bvhOffset;
-        bvhOffset += bvhList.length;
+    }
+
+    offsetBVH(offset) {
+        const u32View = new Uint32Array(this.bvhData.buffer);
+        for (let i = 0; i < this.bvhData.length; i += 8) {
+            if (u32View[i + 3] == 0) {
+                u32View[i + 7] += offset;
+            }
+        }
     }
 }

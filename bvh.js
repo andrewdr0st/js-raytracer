@@ -103,6 +103,7 @@ export class TLASNode {
         this.child1 = null;
         this.child2 = null;
         this.object = null;
+        this.index = 0;
     }
 
     cost() {

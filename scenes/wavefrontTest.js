@@ -24,6 +24,9 @@ export class WavefrontScene extends Scene {
         cube1.scale(2.6, 2.4, 0.9);
         cube1.setTransform();
         const cube2 = this.addObject(0, 0);
+        cube2.translate(-5, 0, 0);
+        cube2.rotate([1, 0, 0], 10);
+        cube2.scale(2, 2, 2);
         cube2.setTransform();
     }
 }

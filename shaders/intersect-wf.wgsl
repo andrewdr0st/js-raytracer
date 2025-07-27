@@ -32,7 +32,8 @@ struct ObjectTransform {
 struct ObjectInfo {
     rootNode: u32,
     material: u32,
-    tex: u32
+    tex: u32,
+    filler: u32
 }
 
 struct QueueHeader {
@@ -68,18 +69,14 @@ const TMAX = 10000.0;
     }
 
     let triCount = arrayLength(&triangles);
-    var bvhStack = array<u32, 24>();
 
     let ray = rayQueue[id.x];
-
-    var t_ray: Ray;
-    t_ray.dir = (objectTransforms[0].transformInv * vec4f(ray.dir, 0)).xyz;
-    t_ray.orig = (objectTransforms[0].transformInv * vec4f(ray.orig, 1)).xyz;
-    let inverseDir = vec3f(1.0) / t_ray.dir;
+    let inverseDir = vec3f(1.0) / ray.dir;
 
     var hr: HitRecord;
     hr.t = TMAX;
 
+    var bvhStack = array<u32, 24>();
     var bptr: i32 = 0;
     bvhStack[0] = 0;
     while (bptr >= 0) {
@@ -89,8 +86,60 @@ const TMAX = 10000.0;
             let cidx2 = b.idx + 1;
             let child1 = bvh[cidx1];
             let child2 = bvh[cidx2];
-            let dist1 = hitBox(t_ray, inverseDir, child1, hr.t);
-            let dist2 = hitBox(t_ray, inverseDir, child2, hr.t);
+            let dist1 = hitBox(ray, inverseDir, child1, hr.t);
+            let dist2 = hitBox(ray, inverseDir, child2, hr.t);
+            let childOrder = select(vec2u(cidx1, cidx2), vec2u(cidx2, cidx1), dist1 > dist2);
+            let minDist = min(dist1, dist2);
+            let maxDist = max(dist1, dist2);
+            if (maxDist < TMAX) {
+                bvhStack[bptr] = childOrder.y;
+                bvhStack[bptr + 1] = childOrder.x;
+                bptr++;
+            } else if (minDist < TMAX) {
+                bvhStack[bptr] = childOrder.x;
+            } else {
+                bptr--;
+            }
+        } else {
+            let objInfo = objectInfos[b.idx];
+            let objTransform = objectTransforms[b.idx];
+            var t_ray: Ray;
+            t_ray.dir = (objTransform.transformInv * vec4f(ray.dir, 0)).xyz;
+            t_ray.orig = (objTransform.transformInv * vec4f(ray.orig, 1)).xyz;
+            hr = traverseBVH(t_ray, hr, objInfo.rootNode);
+            hr.normal = normalize((objTransform.transform * vec4f(hr.normal, 0)).xyz);
+            bptr--;
+        }
+    }
+
+    //hr = traverseBVH(ray, hr, 0);
+
+    if (hr.t < TMAX) {
+        hr.pos = ray.dir * hr.t + ray.orig;
+        hr.dir = ray.dir;
+        hr.pixelIndex = ray.pixelIndex;
+
+        let hitQueueHeader = &queueHeaders[1];
+        let index = atomicAdd(&hitQueueHeader.count, 1u);
+        hitQueue[index] = hr;
+    }
+}
+
+fn traverseBVH(ray: Ray, hitRec: HitRecord, bvhIdx: u32) -> HitRecord {
+    let inverseDir = vec3f(1.0) / ray.dir;
+    var hr = hitRec;
+    var bvhStack = array<u32, 24>();
+    var bptr: i32 = 0;
+    bvhStack[0] = bvhIdx;
+    while (bptr >= 0) {
+        let b = bvh[bvhStack[bptr]];
+        if (b.triCount == 0) {
+            let cidx1 = b.idx;
+            let cidx2 = b.idx + 1;
+            let child1 = bvh[cidx1];
+            let child2 = bvh[cidx2];
+            let dist1 = hitBox(ray, inverseDir, child1, hr.t);
+            let dist2 = hitBox(ray, inverseDir, child2, hr.t);
             let childOrder = select(vec2u(cidx1, cidx2), vec2u(cidx2, cidx1), dist1 > dist2);
             let minDist = min(dist1, dist2);
             let maxDist = max(dist1, dist2);
@@ -105,7 +154,7 @@ const TMAX = 10000.0;
             }
         } else {
             for (var i: u32 = 0; i < b.triCount; i++) {
-                let triHr = hitTriangle(triangles[i + b.idx], t_ray);
+                let triHr = hitTriangle(triangles[i + b.idx], ray);
                 if (triHr.t < hr.t) {
                     hr = triHr;
                 }
@@ -113,17 +162,7 @@ const TMAX = 10000.0;
             bptr--;
         }
     }
-
-    if (hr.t < TMAX) {
-        hr.pos = ray.dir * hr.t + ray.orig;
-        hr.dir = ray.dir;
-        hr.normal = normalize((objectTransforms[0].transform * vec4f(hr.normal, 0)).xyz);
-        hr.pixelIndex = ray.pixelIndex;
-
-        let hitQueueHeader = &queueHeaders[1];
-        let index = atomicAdd(&hitQueueHeader.count, 1u);
-        hitQueue[index] = hr;
-    }
+    return hr;
 }
 
 fn hitSphere(center: vec3f, r: f32, orig: vec3f, dir: vec3f, tMin: f32, tMax: f32) -> f32 {
