@@ -114,7 +114,7 @@ export class Scene {
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
         device.queue.writeBuffer(bvhBuffer, 0, this.tlasData);
-        this.meshList[0].offsetBVH(3);
+        this.meshList[0].offsetBVH(this.objectCount * 2 - 1);
         device.queue.writeBuffer(bvhBuffer, this.tlasData.byteLength, this.meshList[0].bvhData)
     }
 

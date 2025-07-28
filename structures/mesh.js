@@ -15,7 +15,7 @@ export class Mesh {
         this.bvhTriangles = [];
         this.bvhNode = null;
         this.bvhData;
-        this.rootNode = 3;
+        this.rootNode = 5;
     }
 
     /**

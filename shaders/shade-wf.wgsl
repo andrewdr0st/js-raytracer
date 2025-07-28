@@ -9,8 +9,12 @@ struct HitRecord {
     normal: vec3f,
     t: f32,
     dir: vec3f,
+    debug: u32,
     uv: vec2f
 }
+
+const EPSILON = 0.000001;
+const PI = 3.14159265359;
 
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
@@ -24,11 +28,52 @@ struct HitRecord {
     }
 
     let hitRec = hitQueue[id.x];
+    let lightDirection = normalize(vec3f(5, 10, 2));
 
+    let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
+    let albedo = pow(textureLoad(textures16, tc, 0, 0).xyz, vec3f(2.2));
+    let outDir = hitRec.dir * -1;
+    let halfVector = normalize(outDir + lightDirection);
+    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, 0.5) * max(dot(hitRec.normal, lightDirection), 0);
+
+    let corrected = pow(col, vec3f(1.0 / 2.2));
     let imgW = textureDimensions(tex).x;
     let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-    let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
-    let col = textureLoad(textures16, tc, 0, 0);
-
-    textureStore(tex, imgPos, col);
+    let debugCol = select(vec3f(1, 0, 0), vec3f(0, 0, 1), hitRec.debug == 1);
+    textureStore(tex, imgPos, vec4f(corrected, 1));
 }
+
+fn brdf(normal: vec3f, wi: vec3f, wo: vec3f, half: vec3f, albedo: vec3f, a: f32) -> vec3f {
+    let k = (a + 1) * (a + 1) / 8;
+    let ndotwo = max(dot(normal, wo), 0);
+    let ndotwi = max(dot(normal, wi), 0);
+    let d = ndf(max(dot(normal, half), 0), a);
+    let g1 = geometry(ndotwo, k);
+    let g2 = geometry(ndotwi, k);
+    let g = g1 * g2;
+    let f = schlick(max(dot(half, wo), 0), vec3f(0.04));
+    let kd = vec3f(1) - f;
+    let numerator = d * g * f;
+    let denom = 4 * ndotwo * ndotwi + EPSILON;
+    let specular = numerator / denom;
+    let diffuse = kd * albedo / PI;
+    return diffuse + specular;
+}
+
+fn ndf(ndoth: f32, a: f32) -> f32 {
+    let a2 = a * a;
+    let nh2 = ndoth * ndoth;
+    let d = nh2 * (a2 - 1) + 1;
+    let denom = PI * d * d;
+    return a2 / denom;
+}
+
+fn geometry(ndotv: f32, k: f32) -> f32 {
+    let denom = ndotv * (1 - k) + k;
+    return ndotv / denom;
+}
+
+fn schlick(hdotv: f32, f0: vec3f) -> vec3f {
+    let s = pow(1 - hdotv, 5);
+    return f0 + (vec3f(1.0) - f0) * s;
+} 
