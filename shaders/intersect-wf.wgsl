@@ -47,8 +47,9 @@ struct HitRecord {
     normal: vec3f,
     t: f32,
     dir: vec3f,
-    debug: u32,
-    uv: vec2f
+    material: u32,
+    uv: vec2f,
+    texture: u32
 }
 
 const EPSILON = 0.000001;
@@ -107,11 +108,13 @@ const TMAX = 10000.0;
             var t_ray: Ray;
             t_ray.dir = (objTransform.transformInv * vec4f(ray.dir, 0)).xyz;
             t_ray.orig = (objTransform.transformInv * vec4f(ray.orig, 1)).xyz;
-            var hrCopy = HitRecord(hr.pos, hr.pixelIndex, hr.normal, hr.t, hr.dir, hr.debug, hr.uv);
+            var hrCopy = HitRecord(hr.pos, hr.pixelIndex, hr.normal, hr.t, hr.dir, hr.material, hr.uv, hr.texture);
             hrCopy = traverseBVH(t_ray, hrCopy, objInfo.rootNode);
             hrCopy.normal = normalize((objTransform.transform * vec4f(hrCopy.normal, 0)).xyz);
             if (hrCopy.t < hr.t) {
                 hr = hrCopy;
+                hr.material = objInfo.material;
+                hr.texture = objInfo.tex;
             }
             bptr--;
         }

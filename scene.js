@@ -2,6 +2,7 @@ import { device } from "./gpuManager.js";
 import { cameraBuffer } from "./camera.js";
 import { SceneObject, OBJECT_INFO_BYTE_SIZE, OBJECT_TRANSFORM_BYTE_SIZE } from "./structures/sceneObject.js";
 import { TLASNode } from "./bvh.js";
+import { MATERIAL_BYTE_SIZE } from "./structures/material.js";
 const { vec3 } = wgpuMatrix;
 
 export let sceneBindGroupLayout;
@@ -11,6 +12,7 @@ let triangleBuffer;
 let bvhBuffer;
 let objectInfoBuffer;
 let objectTransformBuffer;
+let materialsBuffer;
 
 const TLAS_NODE_FIELD_COUNT = 8;
 
@@ -57,10 +59,11 @@ export class Scene {
      * Creates a new scene object, adds it to the scene, and returns the created object
      * @param {Number} meshId 
      * @param {Number} matId 
+     * @param {texId} texId
      * @returns {SceneObject}
      */
-    addObject(meshId, matId) {
-        let obj = new SceneObject(this.meshList[meshId], matId);
+    addObject(meshId, matId, texId) {
+        let obj = new SceneObject(this.meshList[meshId], matId, texId);
         this.objectList.push(obj);
         this.objectCount++;
         return obj;
@@ -76,7 +79,8 @@ export class Scene {
                 {binding: 2, resource: {buffer: triangleBuffer}},
                 {binding: 3, resource: {buffer: bvhBuffer}},
                 {binding: 4, resource: {buffer: objectInfoBuffer}},
-                {binding: 5, resource: {buffer: objectTransformBuffer}}
+                {binding: 5, resource: {buffer: objectTransformBuffer}},
+                {binding: 6, resource: {buffer: materialsBuffer}}
             ]
         });
     }
@@ -87,6 +91,7 @@ export class Scene {
         this.createBvhBuffer();
         this.createObjectInfoBuffer();
         this.createObjectTransformBuffer();
+        this.createMaterialsBuffer();
     }
 
     createVertexBuffer() {
@@ -141,6 +146,19 @@ export class Scene {
         for (let i = 0; i < this.objectCount; i++) {
             device.queue.writeBuffer(objectTransformBuffer, offset, this.objectList[i].transformData);
             offset += OBJECT_TRANSFORM_BYTE_SIZE;
+        }
+    }
+
+    createMaterialsBuffer() {
+        materialsBuffer = device.createBuffer({
+            label: "materials buffer",
+            size: MATERIAL_BYTE_SIZE * this.materialList.length,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        let offset = 0;
+        for (let i = 0; i < this.materialList.length; i++) {
+            device.queue.writeBuffer(materialsBuffer, offset, this.materialList[i].data);
+            offset += MATERIAL_BYTE_SIZE;
         }
     }
 
@@ -244,6 +262,10 @@ export function createSceneBindGroupLayout() {
                 binding: 5,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
+            }, {//materials
+                binding: 6,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "uniform" }
             }
         ]
     });

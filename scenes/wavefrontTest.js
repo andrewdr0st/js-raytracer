@@ -3,6 +3,7 @@ import { Mesh } from "../structures/mesh.js";
 import { Camera } from "../camera.js";
 import { SceneObject } from "../structures/sceneObject.js";
 import { Texture, createTextureArrays, loadImage } from "../structures/Texture.js";
+import { Material } from "../structures/material.js";
 
 export class WavefrontScene extends Scene {
     setupCamera(w, h) {
@@ -33,7 +34,7 @@ export class WavefrontScene extends Scene {
         cube1.scale(2.6, 2.4, 0.9);
         cube1.setTransform();
         
-        const floorCube = this.addObject(0, 0, 1);
+        const floorCube = this.addObject(0, 1, 1);
         floorCube.translate(0, -2, 0);
         floorCube.scale(40, 1, 40);
         floorCube.setTransform();
@@ -43,5 +44,10 @@ export class WavefrontScene extends Scene {
         cube2.rotate([1, 0, 0], 10);
         cube2.scale(2, 2, 2);
         cube2.setTransform();
+    }
+
+    setupMaterials() {
+        this.materialList.push(new Material(0.5, 0, 0));
+        this.materialList.push(new Material(0.05, 0, 0));
     }
 }

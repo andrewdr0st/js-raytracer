@@ -9,13 +9,22 @@ struct HitRecord {
     normal: vec3f,
     t: f32,
     dir: vec3f,
-    debug: u32,
-    uv: vec2f
+    material: u32,
+    uv: vec2f,
+    texture: u32
+}
+
+struct Material {
+    roughness: f32,
+    metallic: f32,
+    ri: f32,
+    filler: f32
 }
 
 const EPSILON = 0.000001;
 const PI = 3.14159265359;
 
+@group(0) @binding(6) var<uniform> materials: array<Material, 2>; 
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
@@ -28,18 +37,18 @@ const PI = 3.14159265359;
     }
 
     let hitRec = hitQueue[id.x];
-    let lightDirection = normalize(vec3f(5, 10, 2));
+    let lightDirection = normalize(vec3f(5, 10, -2));
 
+    let material = materials[hitRec.material];
     let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
-    let albedo = pow(textureLoad(textures16, tc, 0, 0).xyz, vec3f(2.2));
+    let albedo = pow(textureLoad(textures16, tc, hitRec.texture, 0).xyz, vec3f(2.2));
     let outDir = hitRec.dir * -1;
     let halfVector = normalize(outDir + lightDirection);
-    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, 0.5) * max(dot(hitRec.normal, lightDirection), 0);
+    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, material.roughness) * max(dot(hitRec.normal, lightDirection), 0);
 
     let corrected = pow(col, vec3f(1.0 / 2.2));
     let imgW = textureDimensions(tex).x;
     let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-    let debugCol = select(vec3f(1, 0, 0), vec3f(0, 0, 1), hitRec.debug == 1);
     textureStore(tex, imgPos, vec4f(corrected, 1));
 }
 

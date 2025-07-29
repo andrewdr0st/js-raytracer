@@ -20,7 +20,7 @@ export class SceneObject {
         this.rotateQ = [1, 0, 0, 0];
         this.mesh = mesh;
         this.texture = texture;
-        this.infoData = new Uint32Array([mesh.rootNode, mat.id, texture]);
+        this.infoData = new Uint32Array([mesh.rootNode, mat, texture]);
         this.transformData = new Float32Array(OBJECT_TRANSFORM_F32_COUNT);
     }
 
