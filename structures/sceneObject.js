@@ -2,9 +2,9 @@ const { vec3, quat, mat3, mat4, utils } = wgpuMatrix;
 
 const EPSILON_V = [0.0001, 0.0001, 0.0001];
 const MAT4_F32_COUNT = 16;
-const OBJECT_TRANSFORM_F32_COUNT = 32;
-export const OBJECT_INFO_BYTE_SIZE = 16;
-export const OBJECT_TRANSFORM_BYTE_SIZE = 128;
+const MAT3_F32_COUNT = 12;
+const OBJECT_IINFO_F32_COUNT = 32;
+export const OBJECT_INFO_BYTE_SIZE = 128;
 
 /**
  * @typedef {Object} SceneObject
@@ -20,8 +20,8 @@ export class SceneObject {
         this.rotateQ = [1, 0, 0, 0];
         this.mesh = mesh;
         this.texture = texture;
-        this.infoData = new Uint32Array([mesh.rootNode, mat, texture]);
-        this.transformData = new Float32Array(OBJECT_TRANSFORM_F32_COUNT);
+        this.infoData = new Float32Array(OBJECT_IINFO_F32_COUNT);
+        this.infoArray = [mesh.rootNode, mat, texture];
     }
 
     /**
@@ -56,9 +56,11 @@ export class SceneObject {
         const r = mat4.fromQuat(this.rotateQ);
         const transform = mat4.multiply(t, mat4.multiply(r, s));
         const inv = mat4.inverse(transform);
-        this.transformData.set(transform, 0);
-        this.transformData.set(inv, MAT4_F32_COUNT);
+        this.infoData.set(transform, 0);
+        this.infoData.set(inv, MAT4_F32_COUNT);
         this.createOBB(transform);
+        let u32View = new Uint32Array(this.infoData.buffer);
+        u32View.set(this.infoArray, MAT3_F32_COUNT);
     }
 
     /**

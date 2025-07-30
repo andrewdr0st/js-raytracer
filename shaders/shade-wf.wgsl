@@ -24,7 +24,7 @@ struct Material {
 const EPSILON = 0.000001;
 const PI = 3.14159265359;
 
-@group(0) @binding(6) var<uniform> materials: array<Material, 2>; 
+@group(0) @binding(5) var<uniform> materials: array<Material, 2>;
 @group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;

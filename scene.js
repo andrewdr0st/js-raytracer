@@ -1,6 +1,6 @@
 import { device } from "./gpuManager.js";
 import { cameraBuffer } from "./camera.js";
-import { SceneObject, OBJECT_INFO_BYTE_SIZE, OBJECT_TRANSFORM_BYTE_SIZE } from "./structures/sceneObject.js";
+import { SceneObject, OBJECT_INFO_BYTE_SIZE } from "./structures/sceneObject.js";
 import { TLASNode } from "./bvh.js";
 import { MATERIAL_BYTE_SIZE } from "./structures/material.js";
 const { vec3 } = wgpuMatrix;
@@ -11,7 +11,6 @@ let vertexBuffer;
 let triangleBuffer;
 let bvhBuffer;
 let objectInfoBuffer;
-let objectTransformBuffer;
 let materialsBuffer;
 
 const TLAS_NODE_FIELD_COUNT = 8;
@@ -79,8 +78,7 @@ export class Scene {
                 {binding: 2, resource: {buffer: triangleBuffer}},
                 {binding: 3, resource: {buffer: bvhBuffer}},
                 {binding: 4, resource: {buffer: objectInfoBuffer}},
-                {binding: 5, resource: {buffer: objectTransformBuffer}},
-                {binding: 6, resource: {buffer: materialsBuffer}}
+                {binding: 5, resource: {buffer: materialsBuffer}}
             ]
         });
     }
@@ -90,7 +88,6 @@ export class Scene {
         this.createTriangleBuffer();
         this.createBvhBuffer();
         this.createObjectInfoBuffer();
-        this.createObjectTransformBuffer();
         this.createMaterialsBuffer();
     }
 
@@ -133,19 +130,6 @@ export class Scene {
         for (let i = 0; i < this.objectCount; i++) {
             device.queue.writeBuffer(objectInfoBuffer, offset, this.objectList[i].infoData);
             offset += OBJECT_INFO_BYTE_SIZE;
-        }
-    }
-
-    createObjectTransformBuffer() {
-            objectTransformBuffer = device.createBuffer({
-            label: "object transform buffer",
-            size: OBJECT_TRANSFORM_BYTE_SIZE * this.objectCount,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-        });
-        let offset = 0;
-        for (let i = 0; i < this.objectCount; i++) {
-            device.queue.writeBuffer(objectTransformBuffer, offset, this.objectList[i].transformData);
-            offset += OBJECT_TRANSFORM_BYTE_SIZE;
         }
     }
 
@@ -258,12 +242,8 @@ export function createSceneBindGroupLayout() {
                 binding: 4,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "read-only-storage" }
-            }, {//object transform
-                binding: 5,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
             }, {//materials
-                binding: 6,
+                binding: 5,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "uniform" }
             }

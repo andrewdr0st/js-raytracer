@@ -30,10 +30,11 @@ struct ObjectTransform {
 }
 
 struct ObjectInfo {
+    transform: mat3x3f,
     rootNode: u32,
     material: u32,
     tex: u32,
-    filler: u32
+    transformInv: mat4x4f
 }
 
 struct QueueHeader {
@@ -59,7 +60,6 @@ const TMAX = 10000.0;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
 @group(0) @binding(4) var<storage, read> objectInfos: array<ObjectInfo>;
-@group(0) @binding(5) var<storage, read> objectTransforms: array<ObjectTransform>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
@@ -104,13 +104,12 @@ const TMAX = 10000.0;
             }
         } else {
             let objInfo = objectInfos[b.idx];
-            let objTransform = objectTransforms[b.idx];
             var t_ray: Ray;
-            t_ray.dir = (objTransform.transformInv * vec4f(ray.dir, 0)).xyz;
-            t_ray.orig = (objTransform.transformInv * vec4f(ray.orig, 1)).xyz;
+            t_ray.dir = (objInfo.transformInv * vec4f(ray.dir, 0)).xyz;
+            t_ray.orig = (objInfo.transformInv * vec4f(ray.orig, 1)).xyz;
             var hrCopy = HitRecord(hr.pos, hr.pixelIndex, hr.normal, hr.t, hr.dir, hr.material, hr.uv, hr.texture);
             hrCopy = traverseBVH(t_ray, hrCopy, objInfo.rootNode);
-            hrCopy.normal = normalize((objTransform.transform * vec4f(hrCopy.normal, 0)).xyz);
+            hrCopy.normal = normalize(objInfo.transform * hrCopy.normal);
             if (hrCopy.t < hr.t) {
                 hr = hrCopy;
                 hr.material = objInfo.material;
