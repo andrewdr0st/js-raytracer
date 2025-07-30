@@ -21,7 +21,7 @@ struct Ray {
     pos: vec3f,
     pixelIndex: u32,
     dir: vec3f,
-    bounceCount: u32
+    throughput: u32
 };
 
 struct QueueHeader {
@@ -40,10 +40,7 @@ struct QueueHeader {
 
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
 
-    var ray: Ray;
-    ray.pos = camera.pos;
-    ray.dir = normalize(pCenter - camera.pos);
-    ray.pixelIndex = id.x + id.y * camera.imgW;
+    let ray = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(pCenter - camera.pos), 0);
     
     let rayQueueHeader = &queueHeaders[0];
     let index = atomicAdd(&rayQueueHeader.count, 1u);

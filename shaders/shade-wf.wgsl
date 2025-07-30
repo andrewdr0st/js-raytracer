@@ -3,6 +3,13 @@ struct QueueHeader {
     count: atomic<u32>
 }
 
+struct Ray {
+    orig: vec3f,
+    pixelIndex: u32,
+    dir: vec3f,
+    throughput: u32
+}
+
 struct HitRecord {
     pos: vec3f,
     pixelIndex: u32,
@@ -25,9 +32,9 @@ const EPSILON = 0.000001;
 const PI = 3.14159265359;
 
 @group(0) @binding(5) var<uniform> materials: array<Material, 2>;
-@group(1) @binding(0) var tex: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
+@group(2) @binding(3) var<storage, read_write> shadowQueue: array<Ray>;
 @group(3) @binding(0) var textures16: texture_2d_array<f32>;
 
 @compute @workgroup_size(64, 1, 1) fn shade(@builtin(global_invocation_id) id: vec3u) {
@@ -37,19 +44,27 @@ const PI = 3.14159265359;
     }
 
     let hitRec = hitQueue[id.x];
-    let lightDirection = normalize(vec3f(5, 10, -2));
+    let lightDirection = normalize(vec3f(5, 10, -3));
 
     let material = materials[hitRec.material];
     let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
     let albedo = pow(textureLoad(textures16, tc, hitRec.texture, 0).xyz, vec3f(2.2));
     let outDir = hitRec.dir * -1;
     let halfVector = normalize(outDir + lightDirection);
-    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, material.roughness) * max(dot(hitRec.normal, lightDirection), 0);
-
-    let corrected = pow(col, vec3f(1.0 / 2.2));
-    let imgW = textureDimensions(tex).x;
-    let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-    textureStore(tex, imgPos, vec4f(corrected, 1));
+    let ndotl = max(dot(hitRec.normal, lightDirection), 0);
+    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, material.roughness) * ndotl;
+    let throughput = pack4x8unorm(vec4f(col, 0));
+    
+    if (ndotl > 0) {
+        let shadowRay = Ray(hitRec.pos, hitRec.pixelIndex, lightDirection, throughput);
+        let shadowQueueHeader = &queueHeaders[2];
+        let index = atomicAdd(&shadowQueueHeader.count, 1u);
+        shadowQueue[index] = shadowRay;
+    }
+    // let corrected = pow(col, vec3f(1.0 / 2.2));
+    // let imgW = textureDimensions(tex).x;
+    // let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
+    // textureStore(tex, imgPos, vec4f(corrected, 1));
 }
 
 fn brdf(normal: vec3f, wi: vec3f, wo: vec3f, half: vec3f, albedo: vec3f, a: f32) -> vec3f {

@@ -13,6 +13,7 @@ let infPipeline;
 let spawnPipeline;
 let intersectPipeline;
 let shadePipeline;
+let shadowPipeline;
 let dispatchPipeline;
 
 let raytraceTexture;
@@ -41,7 +42,8 @@ let denoiseParamsBuffer;
 let headerBuffer;
 let dispatchBuffer;
 
-const queueHeaderSize = 16;
+const QUEUE_HEADER_BYTE_SIZE = 16;
+const QUEUE_COUNT = 3;
 const bufferMax = 1024 * 1024 * 128;
 
 const runDenoiser = false;
@@ -84,55 +86,21 @@ export async function renderGPU(scene, staticRender=false) {
 
     spawnPipeline.run(encoder, Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
 
-    dispatchPipeline.run(encoder, 2);
+    dispatchPipeline.run(encoder, 3);
     encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
     intersectPipeline.runIndirect(encoder, dispatchBuffer, 0);
 
-    dispatchPipeline.run(encoder, 2);
+    dispatchPipeline.run(encoder, 3);
     encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
-    shadePipeline.runIndirect(encoder, dispatchBuffer, queueHeaderSize);
+    shadePipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE);
 
-    /*
-    const pass = encoder.beginComputePass({ label: "raytrace pass" });
+    dispatchPipeline.run(encoder, 3);
+    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
-    pass.setPipeline(raytracePipeline);
-    pass.setBindGroup(0, uniformBindGroup);
-    pass.setBindGroup(1, raytraceTextureBindGroup);
-    pass.setBindGroup(2, objectsBindGroup);
-    pass.setBindGroup(3, materialsBindGroup);
-    pass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
+    shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
 
-    pass.end();
-
-    if (runDenoiser) {
-        stepw = 1.0;
-        const npPass = encoder.beginComputePass({ label: "np pass" });
-        npPass.setPipeline(npPipeline);
-        npPass.setBindGroup(0, uniformBindGroup);
-        npPass.setBindGroup(1, npTextureBindGroup);
-        npPass.setBindGroup(2, objectsBindGroup);
-        npPass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
-        npPass.end();
-
-        for (let i = 0; i < denoisePassCount; i++) {
-            const dpass = encoder.beginComputePass({ label: "denoise pass "});
-            dpass.setPipeline(denoisePipeline);
-            dpass.setBindGroup(0, finalTextureBindGroup);
-            dpass.setBindGroup(1, denoiseNpBindGroup);
-            dpass.setBindGroup(2, denoiseParamsBindGroup);
-            dpass.dispatchWorkgroups(Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
-            dpass.end();
-
-            if (i + 1 < denoisePassCount) {
-                encoder.copyTextureToTexture({texture: finalTexture}, {texture: raytraceTexture}, {width: camera.imgW, height: camera.imgH});
-                stepw *= 2;
-                device.queue.writeBuffer(denoiseParamsBuffer, 78 * 4, new Float32Array([stepw]));
-            }
-        }
-    }
-    */
     if (staticRender) {
         encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
     }
@@ -273,6 +241,10 @@ function createBindGroupLayouts(staticRender) {
                 binding: 2,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "storage" }
+            }, {
+                binding: 3,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "storage" }
             }
         ]
     });
@@ -295,9 +267,10 @@ async function createPipelines() {
     spawnPipeline = new Pipeline("spawnrays-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
     intersectPipeline = new Pipeline("intersect-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
     shadePipeline = new Pipeline("shade-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
+    shadowPipeline = new Pipeline("shadow-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
     dispatchPipeline = new Pipeline("queuedispatch-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
 
-    const pipelinePromises = [spawnPipeline.build(), intersectPipeline.build(), shadePipeline.build(), dispatchPipeline.build()];
+    const pipelinePromises = [spawnPipeline.build(), intersectPipeline.build(), shadePipeline.build(), shadowPipeline.build(), dispatchPipeline.build()];
     await Promise.all(pipelinePromises);
 }
 
@@ -355,16 +328,16 @@ function createRaytraceTextureBindGroup(staticRender) {
 function createQueueBindGroup() {
     dispatchBuffer = device.createBuffer({
         label: "dispatch buffer",
-        size: queueHeaderSize * 2,
+        size: QUEUE_HEADER_BYTE_SIZE * QUEUE_COUNT,
         usage: GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_DST
     });
 
     headerBuffer = device.createBuffer({
         label: "header buffer",
-        size: queueHeaderSize * 2,
+        size: QUEUE_HEADER_BYTE_SIZE * QUEUE_COUNT,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(headerBuffer, 0, new Uint32Array([1, 1, 1, 0, 1, 1, 1, 0]));
+    device.queue.writeBuffer(headerBuffer, 0, new Uint32Array([1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]));
 
     const rayBuffer = device.createBuffer({
         label: "ray queue buffer",
@@ -376,6 +349,11 @@ function createQueueBindGroup() {
         size: bufferMax,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
+    const shadowBuffer = device.createBuffer({
+        label: "shadow ray buffer",
+        size: bufferMax,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    });
 
     queueBindGroup = device.createBindGroup({
         label: "queue bind group",
@@ -383,7 +361,8 @@ function createQueueBindGroup() {
         entries: [
             { binding: 0, resource: { buffer: headerBuffer } },
             { binding: 1, resource: { buffer: rayBuffer } },
-            { binding: 2, resource: { buffer: hitBuffer } }
+            { binding: 2, resource: { buffer: hitBuffer } },
+            { binding: 3, resource: { buffer: shadowBuffer } }
         ]
     })
 }
