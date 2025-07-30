@@ -4,41 +4,21 @@ import { sceneBindGroupLayout, sceneBindGroup, createSceneBindGroupLayout } from
 import { createCameraBuffer } from "./camera.js";
 import { texturesBindGroupLayout, texturesBindGroup, createTexturesBindGroup, createTexturesBindGroupLayout } from "./structures/Texture.js";
 
-let raytracePipeline;
-let npPipeline;
-let denoisePipeline;
-let transformPipeline;
-let infPipeline;
-
 let spawnPipeline;
 let intersectPipeline;
 let shadePipeline;
 let shadowPipeline;
 let dispatchPipeline;
 
-let raytraceTexture;
 let prevTexture;
-let normalsTexture;
-let positionsTexture;
 let finalTexture;
 
 let raytraceTextureLayout;
-let npTextureLayout;
-let denoiseTextureLayout;
-let denoiseNpLayout;
-let denoiseParamsLayout;
-let transformLayout;
 let queueLayout;
 
 let raytraceTextureBindGroup;
-let npTextureBindGroup;
-let denoiseParamsBindGroup;
-let finalTextureBindGroup;
-let denoiseNpBindGroup;
-let transformBindGroup;
 let queueBindGroup;
 
-let denoiseParamsBuffer;
 let headerBuffer;
 let dispatchBuffer;
 
@@ -46,9 +26,6 @@ const QUEUE_HEADER_BYTE_SIZE = 16;
 const QUEUE_COUNT = 3;
 const bufferMax = 1024 * 1024 * 128;
 
-const runDenoiser = false;
-const denoisePassCount = 2;
-let stepw = 1.0;
 
 export async function setupGPUData(scene, staticRender=false) {
     createRenderTextures(staticRender);
@@ -63,9 +40,6 @@ function setupBindGroups(scene) {
     scene.createBindGroup();
     createTexturesBindGroup();
     createQueueBindGroup();
-    if (runDenoiser) {
-        createDenoiseBindGroups();
-    }
 }
 
 export async function renderGPU(scene, staticRender=false) {
@@ -111,21 +85,6 @@ export async function renderGPU(scene, staticRender=false) {
     return true;
 }
 
-async function calculateTransforms(scene) {
-    const encoder = device.createCommandEncoder({ label: "transform encoder" });
-
-    const pass = encoder.beginComputePass({ label: "raytrace pass" });
-
-    pass.setPipeline(transformPipeline);
-    pass.setBindGroup(0, transformBindGroup);
-    pass.dispatchWorkgroups(scene.objectCount);
-
-    pass.end();
-
-    const commandBuffer = encoder.finish();
-    device.queue.submit([commandBuffer]);
-}
-
 function createBindGroupLayouts(staticRender) {
     if (staticRender) {
         raytraceTextureLayout = device.createBindGroupLayout({
@@ -152,79 +111,6 @@ function createBindGroupLayouts(staticRender) {
             ]
         });
     }
-
-    npTextureLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba16float" }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba16float" }
-            }
-        ]
-    });
-
-    denoiseTextureLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba8unorm" }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba8unorm", access: "read-only" }
-            }
-        ]
-    });
-
-    denoiseNpLayout = device.createBindGroupLayout({
-        label: "np bind group layout",
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba16float", access: "read-only" }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.COMPUTE,
-                storageTexture: { format: "rgba16float", access: "read-only" }
-            }
-        ]
-    });
-
-    denoiseParamsLayout = device.createBindGroupLayout({
-        label: "denoise params layout",
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }
-        ]
-    });
-
-    transformLayout = device.createBindGroupLayout({
-        label: "transform bind group layout",
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "storage" }
-            }, {
-                binding: 2,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
-            }
-        ]
-    });
 
     queueLayout = device.createBindGroupLayout({
         label: "queue bind group layout",
@@ -275,12 +161,6 @@ async function createPipelines() {
 }
 
 function createRenderTextures(staticRender) {
-    raytraceTexture = device.createTexture({
-        size: {width: canvas.width, height: canvas.height},
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
-    });
-
     if (staticRender) {
         prevTexture = device.createTexture({
             size: {width: canvas.width, height: canvas.height},
@@ -288,18 +168,6 @@ function createRenderTextures(staticRender) {
             usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
         });
     }
-
-    normalsTexture = device.createTexture({
-        size: {width: canvas.width, height: canvas.height},
-        format: "rgba16float",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
-    });
-
-    positionsTexture = device.createTexture({
-        size: {width: canvas.width, height: canvas.height},
-        format: "rgba16float",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
-    });
 
     finalTexture = computeContext.getCurrentTexture();
 }
@@ -310,7 +178,7 @@ function createRaytraceTextureBindGroup(staticRender) {
             label: "ray trace texture bind group",
             layout: raytraceTextureLayout,
             entries: [
-                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() },
+                { binding: 0, resource: finalTexture.createView() },
                 { binding: 1, resource: prevTexture.createView() }
             ]
         });
@@ -319,7 +187,7 @@ function createRaytraceTextureBindGroup(staticRender) {
             label: "ray trace texture bind group",
             layout: raytraceTextureLayout,
             entries: [
-                { binding: 0, resource: runDenoiser ? raytraceTexture.createView() : finalTexture.createView() }
+                { binding: 0, resource: finalTexture.createView() }
             ]
         });
     }
@@ -365,64 +233,4 @@ function createQueueBindGroup() {
             { binding: 3, resource: { buffer: shadowBuffer } }
         ]
     })
-}
-
-function createDenoiseBindGroups() {
-    npTextureBindGroup = device.createBindGroup({
-        layout: npTextureLayout,
-        entries: [
-            { binding: 0, resource: normalsTexture.createView() },
-            { binding: 1, resource: positionsTexture.createView() }
-        ]
-    });
-
-    let cphi = 10.0;
-    let nphi = 0.2;
-    let pphi = 10.0;
-    let params = [
-        1/256, 1/64, 3/128, 1/64, 1/256,
-        1/64 , 1/16, 3/32 , 1/16, 1/64,
-        3/128, 3/32, 9/64 , 3/32, 3/128,
-        1/64 , 1/16, 3/32 , 1/16, 1/64,
-        1/256, 1/64, 3/128, 1/64, 1/256,
-        cphi, nphi, pphi,
-        -2, -2, -1, -2, 0, -2, 1, -2, 2, -2,
-        -2, -1, -1, -1, 0, -1, 1, -1, 2, -1,
-        -2, 0 , -1, 0 , 0,  0,  1, 0,  2, 0,
-        -2, 1 , -1, 1 , 0,  1,  1, 1,  2, 1,
-        -2, 2 , -1, 2 , 0,  2,  1, 2,  2, 2,
-        stepw, 0
-    ];
-    let paramsF = new Float32Array(params);
-
-    denoiseParamsBuffer = device.createBuffer({
-        label: "denoise params buffer",
-        size: paramsF.byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(denoiseParamsBuffer, 0, paramsF);
-
-    denoiseParamsBindGroup = device.createBindGroup({
-        label: "denoise params bind group",
-        layout: denoiseParamsLayout,
-        entries: [
-            { binding: 0, resource: { buffer : denoiseParamsBuffer } }
-        ]
-    });
-
-    finalTextureBindGroup = device.createBindGroup({
-        layout: denoiseTextureLayout,
-        entries: [
-            { binding: 0, resource: finalTexture.createView() },
-            { binding: 1, resource: raytraceTexture.createView() }
-        ]
-    });
-
-    denoiseNpBindGroup = device.createBindGroup({
-        layout: denoiseNpLayout,
-        entries: [
-            { binding: 0, resource: normalsTexture.createView() },
-            { binding: 1, resource: positionsTexture.createView() }
-        ]
-    });
 }
