@@ -29,7 +29,7 @@ export class WavefrontScene extends Scene {
 
     setupObjects() {
         const cube1 = this.addObject(0, 0, 0);
-        cube1.translate(3, 2, 2.5);
+        cube1.translate(2, 3, 2.5);
         cube1.rotate([0, 1, 0], 234);
         cube1.scale(2.6, 2.4, 0.9);
         cube1.setTransform();

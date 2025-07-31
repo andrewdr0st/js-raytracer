@@ -36,7 +36,7 @@ struct QueueHeader {
     count: atomic<u32>
 }
 
-const EPSILON = 0.000001;
+const EPSILON = 0.00001;
 const TMAX = 10000.0;
 
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
@@ -64,7 +64,6 @@ const TMAX = 10000.0;
     let imgW = textureDimensions(outputTexture).x;
     let imgPos = vec2u(ray.pixelIndex % imgW, ray.pixelIndex / imgW);
     textureStore(outputTexture, imgPos, vec4f(corrected, 1));
-    //textureStore(outputTexture, imgPos, vec4f(ray.orig * 0.25, 1));
 }
 
 fn traverseTLAS(ray: Ray) -> f32 {
@@ -173,7 +172,7 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> f32 {
         return t;
     }
     let newt = dinv * dot(edge2, q);
-    return select(newt, t, t > EPSILON);
+    return select(t, newt, newt > EPSILON);
 }
 
 fn hitBox(ray: Ray, invDir: vec3f, bvhNode: BVHNode, t: f32) -> f32 {

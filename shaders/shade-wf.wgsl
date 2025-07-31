@@ -44,7 +44,7 @@ const PI = 3.14159265359;
     }
 
     let hitRec = hitQueue[id.x];
-    let lightDirection = normalize(vec3f(5, 10, -3));
+    let lightDirection = normalize(vec3f(5, 10, -2));
 
     let material = materials[hitRec.material];
     let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
