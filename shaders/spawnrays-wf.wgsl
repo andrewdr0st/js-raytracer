@@ -30,6 +30,7 @@ struct QueueHeader {
 }
 
 @group(0) @binding(0) var<uniform> camera: Camera;
+@group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 
@@ -45,4 +46,6 @@ struct QueueHeader {
     let rayQueueHeader = &queueHeaders[0];
     let index = atomicAdd(&rayQueueHeader.count, 1u);
     rayQueue[index] = ray;
+
+    textureStore(outputTexture, id.xy, vec4f(camera.backgroundColor, 1));
 }

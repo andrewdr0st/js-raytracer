@@ -7,7 +7,7 @@ import { Material } from "../structures/material.js";
 
 export class WavefrontScene extends Scene {
     setupCamera(w, h) {
-        this.camera = new Camera([4, 7, 9], [-0.3, -0.75, -1], w, h, 90.0);
+        this.camera = new Camera([4, 5, 9], [-0.3, -0.75, -1], w, h, 90.0);
         this.camera.backgroundColor = [0.1, 0.1, 0.1];
         this.camera.bounceCount = 1;
         this.camera.raysPerPixel = 1;

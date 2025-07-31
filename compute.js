@@ -45,6 +45,7 @@ function setupBindGroups(scene) {
 export async function renderGPU(scene, staticRender=false) {
     let camera = scene.camera;
     camera.writeToBuffer();
+    resetQueues();
 
     const encoder = device.createCommandEncoder({ label: "raytrace encoder" });
 
@@ -205,7 +206,6 @@ function createQueueBindGroup() {
         size: QUEUE_HEADER_BYTE_SIZE * QUEUE_COUNT,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(headerBuffer, 0, new Uint32Array([1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]));
 
     const rayBuffer = device.createBuffer({
         label: "ray queue buffer",
@@ -233,4 +233,8 @@ function createQueueBindGroup() {
             { binding: 3, resource: { buffer: shadowBuffer } }
         ]
     })
+}
+
+function resetQueues() {
+    device.queue.writeBuffer(headerBuffer, 0, new Uint32Array([1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]));
 }

@@ -172,7 +172,7 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> f32 {
         return t;
     }
     let newt = dinv * dot(edge2, q);
-    return select(t, newt, newt > EPSILON);
+    return select(t, newt, newt > 0.01);
 }
 
 fn hitBox(ray: Ray, invDir: vec3f, bvhNode: BVHNode, t: f32) -> f32 {

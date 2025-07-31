@@ -1,6 +1,7 @@
 import { setupGPUDevice } from "./gpuManager.js";
 import { setupGPUData, renderGPU } from "./compute.js";
 import { WavefrontScene } from "./scenes/wavefrontTest.js";
+const { vec3 } = wgpuMatrix;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("2d");
@@ -100,11 +101,11 @@ async function loop(currentTime) {
     }
     let camera = scene.camera;
 
-    // if (!staticRender) {
-    //     let moveVec = vnorm(vadd(vscalar(camera.forward, cameraFVel), vscalar(camera.right, cameraRVel)));
-    //     camera.pos = vadd(camera.pos, vscalar(moveVec, deltaTime * moveSpeed));
-    //     camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
-    // }
+    if (!staticRender) {
+        let moveVec = vec3.normalize(vec3.add(vec3.scale(camera.forward, cameraFVel), vec3.scale(camera.right, cameraRVel)));
+        camera.pos = vec3.add(camera.pos, vec3.scale(moveVec, deltaTime * moveSpeed));
+        camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];
+    }
 
     camera.init();
 
@@ -116,7 +117,7 @@ async function loop(currentTime) {
         camera.updateStatic();
     } 
 
-    //requestAnimationFrame(loop);
+    requestAnimationFrame(loop);
 }
 
 async function initGPU() {
