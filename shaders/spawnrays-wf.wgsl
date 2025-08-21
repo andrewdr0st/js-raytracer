@@ -18,7 +18,7 @@ struct Camera {
 };
 
 struct Ray {
-    pos: vec3f,
+    orig: vec3f,
     pixelIndex: u32,
     dir: vec3f,
     throughput: u32
@@ -40,12 +40,22 @@ struct QueueHeader {
     }
 
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
+    let target1 = pCenter + 0.125 * camera.pixelDeltaU + 0.375 * camera.pixelDeltaV;
+    let target2 = pCenter - 0.125 * camera.pixelDeltaU - 0.375 * camera.pixelDeltaV;
+    let target3 = pCenter - 0.375 * camera.pixelDeltaU + 0.125 * camera.pixelDeltaV;
+    let target4 = pCenter + 0.375 * camera.pixelDeltaU - 0.125 * camera.pixelDeltaV;
 
-    let ray = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(pCenter - camera.pos), 0);
+    let ray1 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target1 - camera.pos), 0);
+    let ray2 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target2 - camera.pos), 0);
+    let ray3 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target3 - camera.pos), 0);
+    let ray4 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target4 - camera.pos), 0);
     
     let rayQueueHeader = &queueHeaders[0];
-    let index = atomicAdd(&rayQueueHeader.count, 1u);
-    rayQueue[index] = ray;
+    let index = atomicAdd(&rayQueueHeader.count, 4u);
+    rayQueue[index] = ray1;
+    rayQueue[index + 1] = ray2;
+    rayQueue[index + 2] = ray3;
+    rayQueue[index + 3] = ray4;
 
     textureStore(outputTexture, id.xy, vec4f(camera.backgroundColor, 1));
 }

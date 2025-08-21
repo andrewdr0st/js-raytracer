@@ -10,6 +10,8 @@ let shadePipeline;
 let shadowPipeline;
 let dispatchPipeline;
 
+let megaKernelPipeline;
+
 let prevTexture;
 let finalTexture;
 
@@ -21,6 +23,8 @@ let queueBindGroup;
 
 let headerBuffer;
 let dispatchBuffer;
+
+const RUN_MEGA_KERNEL = true;
 
 const QUEUE_HEADER_BYTE_SIZE = 16;
 const QUEUE_COUNT = 3;
@@ -59,22 +63,26 @@ export async function renderGPU(scene, staticRender=false) {
     pass.end();
     */
 
-    spawnPipeline.run(encoder, Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
+    if (RUN_MEGA_KERNEL) {
+        megaKernelPipeline.run(encoder, Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
+    } else {
+        spawnPipeline.run(encoder, Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
 
-    dispatchPipeline.run(encoder, 3);
-    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+        dispatchPipeline.run(encoder, 3);
+        encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
-    intersectPipeline.runIndirect(encoder, dispatchBuffer, 0);
+        intersectPipeline.runIndirect(encoder, dispatchBuffer, 0);
 
-    dispatchPipeline.run(encoder, 3);
-    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+        dispatchPipeline.run(encoder, 3);
+        encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
-    shadePipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE);
+        shadePipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE);
 
-    dispatchPipeline.run(encoder, 3);
-    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+        dispatchPipeline.run(encoder, 3);
+        encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
-    shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
+        shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
+    }
 
     if (staticRender) {
         encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
@@ -159,6 +167,11 @@ async function createPipelines() {
 
     const pipelinePromises = [spawnPipeline.build(), intersectPipeline.build(), shadePipeline.build(), shadowPipeline.build(), dispatchPipeline.build()];
     await Promise.all(pipelinePromises);
+
+    if (RUN_MEGA_KERNEL) {
+        megaKernelPipeline = new Pipeline("megakernel.wgsl", wavefrontLayout, wavefrontBindGroups);
+        await megaKernelPipeline.build();
+    }
 }
 
 function createRenderTextures(staticRender) {

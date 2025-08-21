@@ -32,6 +32,7 @@ const EPSILON = 0.000001;
 const PI = 3.14159265359;
 
 @group(0) @binding(5) var<uniform> materials: array<Material, 2>;
+@group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
 @group(2) @binding(3) var<storage, read_write> shadowQueue: array<Ray>;
@@ -53,13 +54,17 @@ const PI = 3.14159265359;
     let halfVector = normalize(outDir + lightDirection);
     let ndotl = max(dot(hitRec.normal, lightDirection), 0);
     let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, material.roughness) * ndotl;
-    let throughput = pack4x8unorm(vec4f(col, 0));
     
     if (ndotl > 0) {
+        let throughput = pack4x8unorm(vec4f(pow(col, vec3f(1.0 / 2.2)), 0));
         let shadowRay = Ray(hitRec.pos, hitRec.pixelIndex, lightDirection, throughput);
         let shadowQueueHeader = &queueHeaders[2];
         let index = atomicAdd(&shadowQueueHeader.count, 1u);
         shadowQueue[index] = shadowRay;
+    } else {
+        let imgW = textureDimensions(outputTexture).x;
+        let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
+        textureStore(outputTexture, imgPos, vec4f(pow(albedo * 0.03, vec3f(1.0 / 2.2)), 1));
     }
     // let corrected = pow(col, vec3f(1.0 / 2.2));
     // let imgW = textureDimensions(tex).x;

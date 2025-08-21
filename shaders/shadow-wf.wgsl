@@ -58,7 +58,7 @@ const TMAX = 10000.0;
     let t = traverseTLAS(ray);
 
     let incomingLuminance = select(1, 0.33, t < TMAX);
-    let color = unpack4x8unorm(ray.throughput).xyz * incomingLuminance;
+    let color = pow(unpack4x8unorm(ray.throughput).xyz, vec3f(2.2)) * incomingLuminance;
     let corrected = pow(color, vec3f(1.0 / 2.2));
 
     let imgW = textureDimensions(outputTexture).x;
