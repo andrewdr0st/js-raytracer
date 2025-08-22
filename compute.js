@@ -24,9 +24,9 @@ let queueBindGroup;
 let headerBuffer;
 let dispatchBuffer;
 
-const RUN_MEGA_KERNEL = true;
+const RUN_MEGA_KERNEL = false;
 
-const QUEUE_HEADER_BYTE_SIZE = 16;
+const QUEUE_HEADER_BYTE_SIZE = 32;
 const QUEUE_COUNT = 3;
 const bufferMax = 1024 * 1024 * 128;
 
@@ -249,5 +249,5 @@ function createQueueBindGroup() {
 }
 
 function resetQueues() {
-    device.queue.writeBuffer(headerBuffer, 0, new Uint32Array([1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]));
+    device.queue.writeBuffer(headerBuffer, 0, new Uint32Array([1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0]));
 }

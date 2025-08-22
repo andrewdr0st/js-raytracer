@@ -26,11 +26,11 @@ struct Ray {
 
 struct QueueHeader {
     dispatch: vec3u,
-    count: atomic<u32>
+    count: atomic<u32>,
+    clear: u32
 }
 
 @group(0) @binding(0) var<uniform> camera: Camera;
-@group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 
@@ -40,22 +40,10 @@ struct QueueHeader {
     }
 
     let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
-    let target1 = pCenter + 0.125 * camera.pixelDeltaU + 0.375 * camera.pixelDeltaV;
-    let target2 = pCenter - 0.125 * camera.pixelDeltaU - 0.375 * camera.pixelDeltaV;
-    let target3 = pCenter - 0.375 * camera.pixelDeltaU + 0.125 * camera.pixelDeltaV;
-    let target4 = pCenter + 0.375 * camera.pixelDeltaU - 0.125 * camera.pixelDeltaV;
 
-    let ray1 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target1 - camera.pos), 0);
-    let ray2 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target2 - camera.pos), 0);
-    let ray3 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target3 - camera.pos), 0);
-    let ray4 = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(target4 - camera.pos), 0);
+    let ray = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(pCenter - camera.pos), pack4x8unorm(vec4f(1, 1, 1, 0)));
     
     let rayQueueHeader = &queueHeaders[0];
-    let index = atomicAdd(&rayQueueHeader.count, 4u);
-    rayQueue[index] = ray1;
-    rayQueue[index + 1] = ray2;
-    rayQueue[index + 2] = ray3;
-    rayQueue[index + 3] = ray4;
-
-    textureStore(outputTexture, id.xy, vec4f(camera.backgroundColor, 1));
+    let index = atomicAdd(&rayQueueHeader.count, 1u);
+    rayQueue[index] = ray;
 }

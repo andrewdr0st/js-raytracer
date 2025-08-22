@@ -1,3 +1,22 @@
+struct Camera {
+    pos: vec3f,
+    raysPerPixel: u32,
+    topLeftPixel: vec3f,
+    bounceCount: u32,
+    pixelDeltaU: vec3f,
+    antiAliasing: u32,
+    pixelDeltaV: vec3f,
+    randomSeed: u32,
+    backgroundColor: vec3f,
+    frameCount: u32,
+    defocusU: vec3f,
+    gridX: u32,
+    defocusV: vec3f,
+    gridY: u32,
+    imgW: u32,
+    imgH: u32
+};
+
 struct Ray {
     orig: vec3f,
     pixelIndex: u32,
@@ -34,7 +53,8 @@ struct ObjectInfo {
 
 struct QueueHeader {
     dispatch: vec3u,
-    count: atomic<u32>
+    count: atomic<u32>,
+    clear: u32
 }
 
 struct HitRecord {
@@ -51,10 +71,12 @@ struct HitRecord {
 const EPSILON = 0.000001;
 const TMAX = 10000.0;
 
+@group(0) @binding(0) var<uniform> camera: Camera;
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
 @group(0) @binding(4) var<storage, read> objectInfos: array<ObjectInfo>;
+@group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
@@ -79,6 +101,9 @@ const TMAX = 10000.0;
         let hitQueueHeader = &queueHeaders[1];
         let index = atomicAdd(&hitQueueHeader.count, 1u);
         hitQueue[index] = hr;
+    } else {
+        let imgPos = vec2u(ray.pixelIndex % camera.imgW, ray.pixelIndex / camera.imgW);
+        textureStore(outputTexture, imgPos, vec4f(camera.backgroundColor, 1));
     }
 }
 

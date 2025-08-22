@@ -1,6 +1,7 @@
 struct QueueHeader {
     dispatch: vec3u,
-    count: atomic<u32>
+    count: atomic<u32>,
+    clear: u32
 }
 
 struct Ray {
