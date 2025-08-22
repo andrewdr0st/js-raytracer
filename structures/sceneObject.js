@@ -43,8 +43,8 @@ export class SceneObject {
     }
 
     /**
-     * @param {Array} axis 
-     * @param {Number} theta 
+     * @param {Array} axis - vector to rotate about
+     * @param {Number} theta - degrees of rotation
      */
     rotate(axis, theta) {
         this.rotateQ = quat.multiply(this.rotateQ, quat.fromAxisAngle(axis, utils.degToRad(theta)));

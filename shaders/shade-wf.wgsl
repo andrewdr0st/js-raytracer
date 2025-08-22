@@ -52,20 +52,20 @@ const PI = 3.14159265359;
 
     let rtput = pow(unpack4x8unorm(hitRec.throughput).xyz, vec3f(2.2));
     let material = materials[hitRec.material];
+    let inDir = select(lightDirection, reflect(hitRec.dir, hitRec.normal), material.metallic > 0);
     let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
     let albedo = pow(textureLoad(textures16, tc, hitRec.texture, 0).xyz, vec3f(2.2));
     let outDir = hitRec.dir * -1;
-    let halfVector = normalize(outDir + lightDirection);
-    let ndotl = max(dot(hitRec.normal, lightDirection), 0);
-    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, material.roughness, material.metallic) * ndotl * rtput;
+    let halfVector = normalize(outDir + inDir);
+    let ndotl = max(dot(hitRec.normal, inDir), 0);
+    let col = brdf(hitRec.normal, inDir, outDir, halfVector, albedo, material.roughness, material.metallic) * ndotl * rtput;
+    let throughput = pack4x8unorm(vec4f(pow(col, vec3f(1.0 / 2.2)), 0));
     if (material.metallic > 0) {
-        let throughput = pack4x8unorm(vec4f(pow(albedo, vec3f(1.0 / 2.2)), 0));
         let reflectRay = Ray(hitRec.pos, hitRec.pixelIndex, reflect(hitRec.dir, hitRec.normal), throughput);
         let rayQueueHeader = &queueHeaders[0];
         let index = atomicAdd(&rayQueueHeader.count, 1u);
         rayQueue[index] = reflectRay;
     } else if (ndotl > 0) {
-        let throughput = pack4x8unorm(vec4f(pow(col, vec3f(1.0 / 2.2)), 0));
         let shadowRay = Ray(hitRec.pos, hitRec.pixelIndex, lightDirection, throughput);
         let shadowQueueHeader = &queueHeaders[2];
         let index = atomicAdd(&shadowQueueHeader.count, 1u);
