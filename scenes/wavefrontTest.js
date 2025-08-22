@@ -34,18 +34,21 @@ export class WavefrontScene extends Scene {
         cube1.translate(2, 3, 2.5);
         cube1.rotate([0, 1, 0], 234);
         cube1.scale(2.6, 2.4, 0.9);
-        cube1.setTransform();
         
         const floorCube = this.addObject(0, 0, 0);
         floorCube.translate(0, -2, 0);
         floorCube.scale(40, 1, 40);
-        floorCube.setTransform();
 
         const cube2 = this.addObject(0, 1, 1);
         cube2.translate(5, 4, -3);
         cube2.rotate([1, 0, 0], 10);
         cube2.scale(2, 2, 2);
-        cube2.setTransform();
+
+        const bigWall = this.addObject(0, 0, 1);
+        bigWall.translate(0, 5, 30);
+        bigWall.scale(40, 10, 1);
+
+        super.setupObjects();
     }
 
     setupMaterials() {

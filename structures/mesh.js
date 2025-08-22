@@ -15,7 +15,6 @@ export class Mesh {
         this.bvhTriangles = [];
         this.bvhNode = null;
         this.bvhData;
-        this.rootNode = 5;
     }
 
     /**
@@ -110,7 +109,7 @@ export class Mesh {
                     newTriList.push(this.triangles[n.bvhTris[j].index]);
                 }
             } else {
-                bvhList.push(new GpuBVHNode(n.a, n.b, 0, i + bvhOffset));
+                bvhList.push(new GpuBVHNode(n.a, n.b, 0, i));
                 i += 2;
                 nodeQueue.push(n.child1);
                 nodeQueue.push(n.child2);
@@ -126,11 +125,11 @@ export class Mesh {
             u32View.set([node.triCount], offset + 3);
             u32View.set([node.index], offset + 7);
         }
-
         this.triangles = newTriList;
     }
 
     offsetBVH(offset) {
+        this.rootNode = offset;
         const u32View = new Uint32Array(this.bvhData.buffer);
         for (let i = 0; i < this.bvhData.length; i += 8) {
             if (u32View[i + 3] == 0) {

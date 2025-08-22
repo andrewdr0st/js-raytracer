@@ -3,7 +3,7 @@ const { vec3, quat, mat3, mat4, utils } = wgpuMatrix;
 const EPSILON_V = [0.0001, 0.0001, 0.0001];
 const MAT4_F32_COUNT = 16;
 const MAT3_F32_COUNT = 12;
-const OBJECT_IINFO_F32_COUNT = 32;
+const OBJECT_INFO_F32_COUNT = 32;
 export const OBJECT_INFO_BYTE_SIZE = 128;
 
 /**
@@ -19,9 +19,9 @@ export class SceneObject {
         this.scaleV = [1, 1, 1];
         this.rotateQ = [1, 0, 0, 0];
         this.mesh = mesh;
+        this.mat = mat;
         this.texture = texture;
-        this.infoData = new Float32Array(OBJECT_IINFO_F32_COUNT);
-        this.infoArray = [mesh.rootNode, mat, texture];
+        this.infoData = new Float32Array(OBJECT_INFO_F32_COUNT);
     }
 
     /**
@@ -56,11 +56,9 @@ export class SceneObject {
         const r = mat4.fromQuat(this.rotateQ);
         const transform = mat4.multiply(t, mat4.multiply(r, s));
         const inv = mat4.inverse(transform);
-        this.infoData.set(transform, 0);
+        this.infoData.set(mat3.fromMat4(transform), 0);
         this.infoData.set(inv, MAT4_F32_COUNT);
         this.createOBB(transform);
-        let u32View = new Uint32Array(this.infoData.buffer);
-        u32View.set(this.infoArray, MAT3_F32_COUNT);
     }
 
     /**
@@ -97,6 +95,14 @@ export class SceneObject {
         }
         this.a = vec3.sub(minV, EPSILON_V);
         this.b = vec3.add(maxV, EPSILON_V);
+    }
+
+    /**
+     * Sets the BVH root node, material id, and texture id of the object's info buffer
+     */
+    writeInfo() {
+        let u32View = new Uint32Array(this.infoData.buffer);
+        u32View.set([this.mesh.rootNode, this.mat, this.texture], MAT3_F32_COUNT);
     }
 }
 

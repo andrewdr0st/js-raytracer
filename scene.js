@@ -12,7 +12,9 @@ let triangleBuffer;
 let bvhBuffer;
 let objectInfoBuffer;
 let materialsBuffer;
+let sceneBuffer;
 
+const SCENE_BUFFER_BYTE_SIZE = 16;
 const TLAS_NODE_FIELD_COUNT = 8;
 
 export class Scene {
@@ -22,6 +24,7 @@ export class Scene {
         this.meshList = [];
         this.objectList = [];
         this.objectCount = 0;
+        this.sunDirection = new Float32Array([0, 1, 0]);
     }
 
     async setup(w, h) {
@@ -30,6 +33,7 @@ export class Scene {
         await this.loadTextures();
         this.setupMaterials();
         this.setupObjects();
+        this.update();
         this.buildTLAS();
         this.createBuffers();
     }
@@ -46,8 +50,20 @@ export class Scene {
 
     }
 
-    setupObjects() {
+    update() {
+        for (let i = 0; i < this.objectCount; i++) {
+            this.objectList[i].setTransform();
+        }
+    }
 
+    /**
+     * Set up the object in the scene. Must call super.setupObjects() at end of function.
+     */
+    setupObjects() {
+        this.meshList[0].offsetBVH(this.objectCount * 2 - 1);
+        for (let i = 0; i < this.objectCount; i++) {
+            this.objectList[i].writeInfo();
+        }
     }
 
     setupMaterials() {
@@ -78,7 +94,8 @@ export class Scene {
                 {binding: 2, resource: {buffer: triangleBuffer}},
                 {binding: 3, resource: {buffer: bvhBuffer}},
                 {binding: 4, resource: {buffer: objectInfoBuffer}},
-                {binding: 5, resource: {buffer: materialsBuffer}}
+                {binding: 5, resource: {buffer: materialsBuffer}},
+                {binding: 6, resource: {buffer: sceneBuffer}}
             ]
         });
     }
@@ -89,6 +106,16 @@ export class Scene {
         this.createBvhBuffer();
         this.createObjectInfoBuffer();
         this.createMaterialsBuffer();
+        this.createSceneBuffer();
+    }
+
+    createSceneBuffer() {
+        sceneBuffer = device.createBuffer({
+            label: "scene buffer",
+            size: SCENE_BUFFER_BYTE_SIZE,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        device.queue.writeBuffer(sceneBuffer, 0, this.sunDirection);
     }
 
     createVertexBuffer() {
@@ -116,7 +143,6 @@ export class Scene {
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
         device.queue.writeBuffer(bvhBuffer, 0, this.tlasData);
-        this.meshList[0].offsetBVH(this.objectCount * 2 - 1);
         device.queue.writeBuffer(bvhBuffer, this.tlasData.byteLength, this.meshList[0].bvhData)
     }
 
@@ -244,6 +270,10 @@ export function createSceneBindGroupLayout() {
                 buffer: { type: "read-only-storage" }
             }, {//materials
                 binding: 5,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "uniform" }
+            }, {//scene data
+                binding: 6,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: { type: "uniform" }
             }
