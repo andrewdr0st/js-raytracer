@@ -19,7 +19,8 @@ struct HitRecord {
     dir: vec3f,
     material: u32,
     uv: vec2f,
-    texture: u32
+    texture: u32,
+    throughput: u32
 }
 
 struct Material {
@@ -32,9 +33,10 @@ struct Material {
 const EPSILON = 0.000001;
 const PI = 3.14159265359;
 
-@group(0) @binding(5) var<uniform> materials: array<Material, 2>;
+@group(0) @binding(5) var<uniform> materials: array<Material, 3>;
 @group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
+@group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
 @group(2) @binding(3) var<storage, read_write> shadowQueue: array<Ray>;
 @group(3) @binding(0) var textures16: texture_2d_array<f32>;
@@ -48,15 +50,21 @@ const PI = 3.14159265359;
     let hitRec = hitQueue[id.x];
     let lightDirection = normalize(vec3f(5, 10, -2));
 
+    let rtput = pow(unpack4x8unorm(hitRec.throughput).xyz, vec3f(2.2));
     let material = materials[hitRec.material];
     let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
     let albedo = pow(textureLoad(textures16, tc, hitRec.texture, 0).xyz, vec3f(2.2));
     let outDir = hitRec.dir * -1;
     let halfVector = normalize(outDir + lightDirection);
     let ndotl = max(dot(hitRec.normal, lightDirection), 0);
-    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, material.roughness) * ndotl;
-    
-    if (ndotl > 0) {
+    let col = brdf(hitRec.normal, lightDirection, outDir, halfVector, albedo, material.roughness, material.metallic) * ndotl * rtput;
+    if (material.metallic > 0) {
+        let throughput = pack4x8unorm(vec4f(pow(albedo, vec3f(1.0 / 2.2)), 0));
+        let reflectRay = Ray(hitRec.pos, hitRec.pixelIndex, reflect(hitRec.dir, hitRec.normal), throughput);
+        let rayQueueHeader = &queueHeaders[0];
+        let index = atomicAdd(&rayQueueHeader.count, 1u);
+        rayQueue[index] = reflectRay;
+    } else if (ndotl > 0) {
         let throughput = pack4x8unorm(vec4f(pow(col, vec3f(1.0 / 2.2)), 0));
         let shadowRay = Ray(hitRec.pos, hitRec.pixelIndex, lightDirection, throughput);
         let shadowQueueHeader = &queueHeaders[2];
@@ -65,15 +73,11 @@ const PI = 3.14159265359;
     } else {
         let imgW = textureDimensions(outputTexture).x;
         let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-        textureStore(outputTexture, imgPos, vec4f(pow(albedo * 0.03, vec3f(1.0 / 2.2)), 1));
+        textureStore(outputTexture, imgPos, vec4f(pow(albedo * 0.03 * rtput, vec3f(1.0 / 2.2)), 1));
     }
-    // let corrected = pow(col, vec3f(1.0 / 2.2));
-    // let imgW = textureDimensions(tex).x;
-    // let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-    // textureStore(tex, imgPos, vec4f(corrected, 1));
 }
 
-fn brdf(normal: vec3f, wi: vec3f, wo: vec3f, half: vec3f, albedo: vec3f, a: f32) -> vec3f {
+fn brdf(normal: vec3f, wi: vec3f, wo: vec3f, half: vec3f, albedo: vec3f, a: f32, metallic: f32) -> vec3f {
     let k = (a + 1) * (a + 1) / 8;
     let ndotwo = max(dot(normal, wo), 0);
     let ndotwi = max(dot(normal, wi), 0);
@@ -81,8 +85,8 @@ fn brdf(normal: vec3f, wi: vec3f, wo: vec3f, half: vec3f, albedo: vec3f, a: f32)
     let g1 = geometry(ndotwo, k);
     let g2 = geometry(ndotwi, k);
     let g = g1 * g2;
-    let f = schlick(max(dot(half, wo), 0), vec3f(0.04));
-    let kd = vec3f(1) - f;
+    let f = schlick(max(dot(half, wo), 0), mix(vec3f(0.04), albedo, metallic));
+    let kd = (vec3f(1) - f) * 1 - metallic;
     let numerator = d * g * f;
     let denom = 4 * ndotwo * ndotwi + EPSILON;
     let specular = numerator / denom;

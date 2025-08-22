@@ -82,6 +82,17 @@ export async function renderGPU(scene, staticRender=false) {
         encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
         shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
+        intersectPipeline.runIndirect(encoder, dispatchBuffer, 0);
+
+        dispatchPipeline.run(encoder, 3);
+        encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+
+        shadePipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE);
+
+        dispatchPipeline.run(encoder, 3);
+        encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+
+        shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
     }
 
     if (staticRender) {
@@ -245,7 +256,7 @@ function createQueueBindGroup() {
             { binding: 2, resource: { buffer: hitBuffer } },
             { binding: 3, resource: { buffer: shadowBuffer } }
         ]
-    })
+    });
 }
 
 function resetQueues() {

@@ -8,7 +8,7 @@ import { Material } from "../structures/material.js";
 export class WavefrontScene extends Scene {
     setupCamera(w, h) {
         this.camera = new Camera([4, 5, 9], [-0.3, -0.75, -1], w, h, 90.0);
-        this.camera.backgroundColor = [0.1, 0.1, 0.1];
+        this.camera.backgroundColor = [0.05, 0.05, 0.05];
         this.camera.bounceCount = 1;
         this.camera.raysPerPixel = 1;
     }
@@ -41,7 +41,7 @@ export class WavefrontScene extends Scene {
         floorCube.scale(40, 1, 40);
         floorCube.setTransform();
 
-        const cube2 = this.addObject(0, 0, 0);
+        const cube2 = this.addObject(0, 1, 1);
         cube2.translate(5, 4, -3);
         cube2.rotate([1, 0, 0], 10);
         cube2.scale(2, 2, 2);

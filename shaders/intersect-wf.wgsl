@@ -65,7 +65,8 @@ struct HitRecord {
     dir: vec3f,
     material: u32,
     uv: vec2f,
-    texture: u32
+    texture: u32,
+    throughput: u32
 }
 
 const EPSILON = 0.000001;
@@ -97,13 +98,17 @@ const TMAX = 10000.0;
         hr.pos = ray.dir * hr.t + ray.orig;
         hr.dir = ray.dir;
         hr.pixelIndex = ray.pixelIndex;
+        hr.throughput = ray.throughput;
 
         let hitQueueHeader = &queueHeaders[1];
         let index = atomicAdd(&hitQueueHeader.count, 1u);
         hitQueue[index] = hr;
     } else {
+        let lightDirection = normalize(vec3f(5, 10, -2));
+        let sun = step(0.99, dot(lightDirection, ray.dir));
+        let c = mix(camera.backgroundColor, vec3f(1), sun) * pow(unpack4x8unorm(ray.throughput).xyz, vec3f(2.2));
         let imgPos = vec2u(ray.pixelIndex % camera.imgW, ray.pixelIndex / camera.imgW);
-        textureStore(outputTexture, imgPos, vec4f(camera.backgroundColor, 1));
+        textureStore(outputTexture, imgPos, vec4f(pow(c, vec3f(1.0 / 2.2)), 1));
     }
 }
 
@@ -139,7 +144,7 @@ fn traverseTLAS(ray: Ray, hitRec: HitRecord) -> HitRecord {
             var t_ray: Ray;
             t_ray.dir = (objInfo.transformInv * vec4f(ray.dir, 0)).xyz;
             t_ray.orig = (objInfo.transformInv * vec4f(ray.orig, 1)).xyz;
-            var hrCopy = HitRecord(hr.pos, hr.pixelIndex, hr.normal, hr.t, hr.dir, hr.material, hr.uv, hr.texture);
+            var hrCopy = HitRecord(hr.pos, hr.pixelIndex, hr.normal, hr.t, hr.dir, hr.material, hr.uv, hr.texture, hr.throughput);
             hrCopy = traverseBVH(t_ray, hrCopy, objInfo.rootNode);
             hrCopy.normal = normalize(objInfo.transform * hrCopy.normal);
             if (hrCopy.t < hr.t) {
@@ -219,7 +224,7 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> HitRecord {
     }
     let c = 1 - a - b;
     let t = dinv * dot(edge2, q);
-    if (t < EPSILON) {
+    if (t < 0.01) {
         return hr;
     }
     hr.t = t;
