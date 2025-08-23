@@ -14,7 +14,7 @@ export async function setupGPUDevice(canvas) {
     computeContext.configure({
         device,
         format: "rgba8unorm",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC
+        usage: GPUTextureUsage.COPY_DST
     });
 
     return true;

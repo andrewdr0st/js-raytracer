@@ -78,16 +78,9 @@ export async function renderGPU(scene, staticRender=false) {
 
         shadePipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE);
 
-        dispatchPipeline.run(encoder, 3);
-        encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
-
-        shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
-        intersectPipeline.runIndirect(encoder, dispatchBuffer, 0);
-
-        dispatchPipeline.run(encoder, 3);
-        encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
-
-        shadePipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE);
+        for (let i = 0; i < 3; i++) {
+            runBouncePass(encoder);
+        }
 
         dispatchPipeline.run(encoder, 3);
         encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
@@ -98,11 +91,27 @@ export async function renderGPU(scene, staticRender=false) {
     if (staticRender) {
         encoder.copyTextureToTexture({texture: finalTexture}, {texture: prevTexture}, {width: camera.imgW, height: camera.imgH});
     }
+
+    const canvasTexture = computeContext.getCurrentTexture();
+    encoder.copyTextureToTexture({texture: finalTexture}, {texture: canvasTexture}, [camera.imgW, camera.imgH]);
     
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);
 
     return true;
+}
+
+function runBouncePass(encoder) {
+    dispatchPipeline.run(encoder, 3);
+    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+
+    shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
+    intersectPipeline.runIndirect(encoder, dispatchBuffer, 0);
+
+    dispatchPipeline.run(encoder, 3);
+    encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
+
+    shadePipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE);
 }
 
 function createBindGroupLayouts(staticRender) {
@@ -188,13 +197,17 @@ async function createPipelines() {
 function createRenderTextures(staticRender) {
     if (staticRender) {
         prevTexture = device.createTexture({
-            size: {width: canvas.width, height: canvas.height},
+            size: [canvas.width, canvas.height],
             format: "rgba8unorm",
             usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
         });
     }
 
-    finalTexture = computeContext.getCurrentTexture();
+    finalTexture = device.createTexture({
+        size: [canvas.width, canvas.height],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
+    });
 }
 
 function createRaytraceTextureBindGroup(staticRender) {

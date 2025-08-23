@@ -4,7 +4,7 @@ import { WavefrontScene } from "./scenes/wavefrontTest.js";
 const { vec3 } = wgpuMatrix;
 
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("webgpu");
 
 const blackBorders = false;
 const staticRender = false;
@@ -49,25 +49,25 @@ if (!staticRender) {
     }
 
     document.addEventListener("keydown", (e) => {
-        if (e.key == 'w') {
+        if (e.code == "KeyW") {
             cameraFVel = 1;
-        } else if (e.key == 's') {
+        } else if (e.code == "KeyS") {
             cameraFVel = -1;
-        } else if (e.key == 'a') {
+        } else if (e.code == "KeyA") {
             cameraRVel = -1;
-        } else if (e.key == 'd') {
+        } else if (e.code == "KeyD") {
             cameraRVel = 1;
         }
     });
 
     document.addEventListener("keyup", (e) => {
-        if (e.key == 'w') {
+        if (e.code == "KeyW") {
             cameraFVel = 0;
-        } else if (e.key == 's') {
+        } else if (e.code == "KeyS") {
             cameraFVel = 0;
-        } else if (e.key == 'a') {
+        } else if (e.code == "KeyA") {
             cameraRVel = 0;
-        } else if (e.key == 'd') {
+        } else if (e.code == "KeyD") {
             cameraRVel = 0;
         }
     });
@@ -85,10 +85,6 @@ if (!staticRender) {
         cameraPhi = Math.min(Math.max(cameraPhi, -cameraPhiBound), cameraPhiBound);
     });
 }
-
-const tempCanvas = document.createElement("canvas");
-tempCanvas.width = w;
-tempCanvas.height = h;
 
 let lastFrameTime = 0;
 
@@ -111,8 +107,6 @@ async function loop(currentTime) {
 
     await renderGPU(scene, staticRender);
 
-    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
-
     if (staticRender) {
         camera.updateStatic();
     } 
@@ -121,7 +115,7 @@ async function loop(currentTime) {
 }
 
 async function initGPU() {
-    if (await setupGPUDevice(tempCanvas, staticRender)) {
+    if (await setupGPUDevice(canvas, staticRender)) {
         await scene.setup(w, h);
         if (staticRender) {
             scene.camera.realtimeMode = false;

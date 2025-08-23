@@ -48,6 +48,10 @@ export class WavefrontScene extends Scene {
         bigWall.translate(0, 5, 30);
         bigWall.scale(40, 10, 1);
 
+        const mirror = this.addObject(0, 2, 2);
+        mirror.translate(0, 6, 29.5);
+        mirror.scale(5, 5, 1);
+
         super.setupObjects();
     }
 
