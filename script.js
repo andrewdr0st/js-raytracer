@@ -105,7 +105,7 @@ async function loop(currentTime) {
 
     camera.init();
 
-    await renderGPU(scene, staticRender);
+    renderGPU(scene, staticRender);
 
     if (staticRender) {
         camera.updateStatic();

@@ -35,8 +35,8 @@ export class BVHTriangle {
     /**
      * @param {Triangle} tri 
      */
-    constructor(tri) {
-        this.index = tri.index;
+    constructor(tri, idx) {
+        this.index = idx;
         let v1 = tri.v1.pos;
         let v2 = tri.v2.pos;
         let v3 = tri.v3.pos;

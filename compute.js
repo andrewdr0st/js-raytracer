@@ -46,7 +46,7 @@ function setupBindGroups(scene) {
     createQueueBindGroup();
 }
 
-export async function renderGPU(scene, staticRender=false) {
+export function renderGPU(scene, staticRender=false) {
     let camera = scene.camera;
     camera.writeToBuffer();
     resetQueues();
@@ -97,8 +97,6 @@ export async function renderGPU(scene, staticRender=false) {
     
     const commandBuffer = encoder.finish();
     device.queue.submit([commandBuffer]);
-
-    return true;
 }
 
 function runBouncePass(encoder) {

@@ -22,6 +22,9 @@ export class Scene {
         this.camera;
         this.materialList = [];
         this.meshList = [];
+        this.vertexSize = 0;
+        this.triangleSize = 0;
+        this.bvhSize = 0;
         this.objectList = [];
         this.objectCount = 0;
         this.sunDirection = new Float32Array([0, 1, 0]);
@@ -60,7 +63,13 @@ export class Scene {
      * Set up the object in the scene. Must call super.setupObjects() at end of function.
      */
     setupObjects() {
-        this.meshList[0].offsetBVH(this.objectCount * 2 - 1);
+        let bOffset = this.objectCount * 2 - 1;
+        for (let i = 0; i < this.meshList.length; i++) {
+            console.log(bOffset);
+            let m = this.meshList[i];
+            m.offsetBVH(bOffset);
+            bOffset += m.bvhSize;
+        }
         for (let i = 0; i < this.objectCount; i++) {
             this.objectList[i].writeInfo();
         }
@@ -84,6 +93,13 @@ export class Scene {
         return obj;
     }
 
+    addMesh(mesh) {
+        this.meshList.push(mesh);
+        this.vertexSize += mesh.vertexData.byteLength;
+        this.triangleSize += mesh.triangleData.byteLength;
+        this.bvhSize += mesh.bvhData.byteLength;
+    }
+
     createBindGroup() {
         sceneBindGroup = device.createBindGroup({
             label: "scene bind group",
@@ -104,6 +120,7 @@ export class Scene {
         this.createVertexBuffer();
         this.createTriangleBuffer();
         this.createBvhBuffer();
+        this.writeMeshBuffers();
         this.createObjectInfoBuffer();
         this.createMaterialsBuffer();
         this.createSceneBuffer();
@@ -121,29 +138,42 @@ export class Scene {
     createVertexBuffer() {
         vertexBuffer = device.createBuffer({
             label: "vetex buffer",
-            size: this.meshList[0].vertexData.byteLength,
+            size: this.vertexSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
-        device.queue.writeBuffer(vertexBuffer, 0, this.meshList[0].vertexData);
     }
 
     createTriangleBuffer() {
         triangleBuffer = device.createBuffer({
             label: "triangle buffer",
-            size: this.meshList[0].triangleData.byteLength,
+            size: this.triangleSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
-        device.queue.writeBuffer(triangleBuffer, 0, this.meshList[0].triangleData);
     }
 
     createBvhBuffer() {
         bvhBuffer = device.createBuffer({
             label: "bvh buffer",
-            size: this.tlasData.byteLength + this.meshList[0].bvhData.byteLength,
+            size: this.tlasData.byteLength + this.bvhSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
         device.queue.writeBuffer(bvhBuffer, 0, this.tlasData);
-        device.queue.writeBuffer(bvhBuffer, this.tlasData.byteLength, this.meshList[0].bvhData)
+    }
+
+    writeMeshBuffers() {
+        let vOffset = 0;
+        let tOffset = 0;
+        let bOffset = this.tlasData.byteLength;
+        for (let i = 0; i < this.meshList.length; i++) {
+            let m = this.meshList[i];
+            device.queue.writeBuffer(vertexBuffer, vOffset, m.vertexData);
+            vOffset += m.vertexData.byteLength;
+            device.queue.writeBuffer(triangleBuffer, tOffset, m.triangleData);
+            tOffset += m.triangleData.byteLength;
+            console.log(bOffset);
+            device.queue.writeBuffer(bvhBuffer, bOffset, m.bvhData);
+            bOffset += m.bvhData.byteLength;
+        }
     }
 
     createObjectInfoBuffer() {

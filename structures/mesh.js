@@ -2,7 +2,8 @@ import { Triangle, TRIANGLE_U32_COUNT, BVHTriangle } from "./triangle.js";
 import { Vertex, VERTEX_F32_COUNT } from "./vertex.js";
 import { BVHNode, GpuBVHNode } from "../bvh.js";
 
-let bvhOffset = 0;
+let vertIndex = 0;
+let triIndex = 0;
 
 /**
  * @typedef {Object} Mesh
@@ -15,6 +16,7 @@ export class Mesh {
         this.bvhTriangles = [];
         this.bvhNode = null;
         this.bvhData;
+        this.bvhSize = 0;
     }
 
     /**
@@ -57,17 +59,18 @@ export class Mesh {
                         let p = parseInt(v[0]) - 1;
                         let t = parseInt(v[1]) - 1;
                         let n = parseInt(v[2]) - 1;
-                        vert = new Vertex(vIdx++, positions[p], textureCoords[t], normals[n]);
+                        vert = new Vertex(vertIndex++, positions[p], textureCoords[t], normals[n]);
                         this.vertices.push(vert);
                         vertexMap.set(s, vert);
                     }
                     vList.push(vert);
                 }
-                const tri = invert ? new Triangle(tIdx++, vList[2], vList[1], vList[0]) : new Triangle(tIdx++, vList[0], vList[1], vList[2]);
+                const tri = invert ? new Triangle(triIndex++, vList[2], vList[1], vList[0]) : new Triangle(triIndex++, vList[0], vList[1], vList[2]);
                 this.triangles.push(tri);
-                this.bvhTriangles.push(new BVHTriangle(tri));
+                this.bvhTriangles.push(new BVHTriangle(tri, tIdx++));
             }
         }
+        console.log(this.triangles);
         this.buildBVH();
         this.setData();
     }
@@ -98,7 +101,7 @@ export class Mesh {
         let newTriList = [];
         let nodeQueue = [this.bvhNode];
         let i = 1;
-        let tCount = 0;
+        let tCount = triIndex - this.triangles.length;
         while (nodeQueue.length > 0) {
             let n = nodeQueue.shift();
             if (n.child1 == null) {
@@ -115,6 +118,7 @@ export class Mesh {
                 nodeQueue.push(n.child2);
             }
         }
+        this.bvhSize = bvhList.length;
         this.bvhData = new Float32Array(bvhList.length * 8);
         const u32View = new Uint32Array(this.bvhData.buffer);
         for (let i = 0; i < bvhList.length; i++) {
@@ -128,13 +132,14 @@ export class Mesh {
         this.triangles = newTriList;
     }
 
-    offsetBVH(offset) {
-        this.rootNode = offset;
+    offsetBVH(bvhOffset) {
+        this.rootNode = bvhOffset;
         const u32View = new Uint32Array(this.bvhData.buffer);
         for (let i = 0; i < this.bvhData.length; i += 8) {
             if (u32View[i + 3] == 0) {
-                u32View[i + 7] += offset;
+                u32View[i + 7] += bvhOffset;
             }
         }
+        console.log(u32View);
     }
 }

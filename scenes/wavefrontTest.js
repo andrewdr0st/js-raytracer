@@ -14,9 +14,15 @@ export class WavefrontScene extends Scene {
     }
 
     async loadMeshes() {
+        let plane = new Mesh();
+        await plane.parseObjFile("plane.obj");
         let cube = new Mesh();
         await cube.parseObjFile("cube.obj");
-        this.meshList.push(cube);
+        let cylinder = new Mesh();
+        await cylinder.parseObjFile("cylinder.obj");
+        this.addMesh(plane);
+        this.addMesh(cube);
+        this.addMesh(cylinder);
     }
 
     async loadTextures() {
@@ -30,27 +36,30 @@ export class WavefrontScene extends Scene {
     }
 
     setupObjects() {
-        const cube1 = this.addObject(0, 2, 2);
+        const cube1 = this.addObject(1, 2, 2);
         cube1.translate(2, 3, 2.5);
         cube1.rotate([0, 1, 0], 234);
         cube1.scale(2.6, 2.4, 0.9);
         
-        const floorCube = this.addObject(0, 0, 0);
-        floorCube.translate(0, -2, 0);
-        floorCube.scale(40, 1, 40);
+        const floorPlane = this.addObject(0, 0, 0);
+        floorPlane.translate(0, -2, 0);
+        floorPlane.scale(40, 1, 40);
 
-        const cube2 = this.addObject(0, 1, 1);
+        const cube2 = this.addObject(1, 1, 1);
         cube2.translate(5, 4, -3);
         cube2.rotate([1, 0, 0], 10);
         cube2.scale(2, 2, 2);
 
-        const bigWall = this.addObject(0, 0, 1);
+        const bigWall = this.addObject(1, 0, 1);
         bigWall.translate(0, 5, 30);
         bigWall.scale(40, 10, 1);
 
-        const mirror = this.addObject(0, 2, 2);
+        const mirror = this.addObject(1, 2, 2);
         mirror.translate(0, 6, 29.5);
         mirror.scale(5, 5, 1);
+
+        const cylinder = this.addObject(2, 0, 0);
+        cylinder.translate(-10, 1, -3);
 
         super.setupObjects();
     }
