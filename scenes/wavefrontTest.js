@@ -11,6 +11,9 @@ export class WavefrontScene extends Scene {
         this.camera.backgroundColor = [0.05, 0.05, 0.05];
         this.camera.bounceCount = 1;
         this.camera.raysPerPixel = 1;
+
+        this.accumTime = 0;
+        this.sunSpeed = 0.02;
     }
 
     async loadMeshes() {
@@ -68,5 +71,11 @@ export class WavefrontScene extends Scene {
         this.materialList.push(new Material(0.5, 0, 0));
         this.materialList.push(new Material(0.05, 0, 0));
         this.materialList.push(new Material(0.01, 1, 0));
+    }
+
+    update(deltaTime) {
+        this.accumTime += deltaTime;
+        this.sunDirection.set([Math.sin(this.accumTime * this.sunSpeed), Math.cos(this.accumTime * this.sunSpeed)], 0);
+        super.update(deltaTime);
     }
 }

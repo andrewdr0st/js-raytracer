@@ -69,6 +69,10 @@ struct HitRecord {
     throughput: u32
 }
 
+struct SceneData {
+    lightDirection: vec3f
+}
+
 const EPSILON = 0.000001;
 const TMAX = 10000.0;
 
@@ -77,6 +81,7 @@ const TMAX = 10000.0;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
 @group(0) @binding(4) var<storage, read> objectInfos: array<ObjectInfo>;
+@group(0) @binding(6) var<uniform> scene: SceneData;
 @group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
@@ -104,8 +109,7 @@ const TMAX = 10000.0;
         let index = atomicAdd(&hitQueueHeader.count, 1u);
         hitQueue[index] = hr;
     } else {
-        let lightDirection = normalize(vec3f(5, 10, -2));
-        let sun = step(0.99, dot(lightDirection, ray.dir));
+        let sun = step(0.99, dot(scene.lightDirection, ray.dir));
         let c = mix(camera.backgroundColor, vec3f(1), sun) * pow(unpack4x8unorm(ray.throughput).xyz, vec3f(2.2));
         let imgPos = vec2u(ray.pixelIndex % camera.imgW, ray.pixelIndex / camera.imgW);
         textureStore(outputTexture, imgPos, vec4f(pow(c, vec3f(1.0 / 2.2)), 1));

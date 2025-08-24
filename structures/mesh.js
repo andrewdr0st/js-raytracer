@@ -70,7 +70,6 @@ export class Mesh {
                 this.bvhTriangles.push(new BVHTriangle(tri, tIdx++));
             }
         }
-        console.log(this.triangles);
         this.buildBVH();
         this.setData();
     }
@@ -140,6 +139,5 @@ export class Mesh {
                 u32View[i + 7] += bvhOffset;
             }
         }
-        console.log(u32View);
     }
 }

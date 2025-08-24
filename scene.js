@@ -36,7 +36,6 @@ export class Scene {
         await this.loadTextures();
         this.setupMaterials();
         this.setupObjects();
-        this.update();
         this.buildTLAS();
         this.createBuffers();
     }
@@ -53,10 +52,8 @@ export class Scene {
 
     }
 
-    update() {
-        for (let i = 0; i < this.objectCount; i++) {
-            this.objectList[i].setTransform();
-        }
+    update(deltaTime) {
+        device.queue.writeBuffer(sceneBuffer, 0, this.sunDirection);
     }
 
     /**
@@ -65,13 +62,13 @@ export class Scene {
     setupObjects() {
         let bOffset = this.objectCount * 2 - 1;
         for (let i = 0; i < this.meshList.length; i++) {
-            console.log(bOffset);
             let m = this.meshList[i];
             m.offsetBVH(bOffset);
             bOffset += m.bvhSize;
         }
         for (let i = 0; i < this.objectCount; i++) {
             this.objectList[i].writeInfo();
+            this.objectList[i].setTransform();
         }
     }
 
@@ -170,7 +167,6 @@ export class Scene {
             vOffset += m.vertexData.byteLength;
             device.queue.writeBuffer(triangleBuffer, tOffset, m.triangleData);
             tOffset += m.triangleData.byteLength;
-            console.log(bOffset);
             device.queue.writeBuffer(bvhBuffer, bOffset, m.bvhData);
             bOffset += m.bvhData.byteLength;
         }

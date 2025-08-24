@@ -95,6 +95,7 @@ async function loop(currentTime) {
     if (debugFramerate) {
         console.log(1 / deltaTime);
     }
+    scene.update(deltaTime);
     let camera = scene.camera;
 
     if (!staticRender) {

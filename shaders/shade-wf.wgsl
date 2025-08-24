@@ -30,10 +30,15 @@ struct Material {
     filler: f32
 }
 
+struct SceneData {
+    lightDirection: vec3f
+}
+
 const EPSILON = 0.000001;
 const PI = 3.14159265359;
 
 @group(0) @binding(5) var<uniform> materials: array<Material, 3>;
+@group(0) @binding(6) var<uniform> scene: SceneData;
 @group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
@@ -48,7 +53,7 @@ const PI = 3.14159265359;
     }
 
     let hitRec = hitQueue[id.x];
-    let lightDirection = normalize(vec3f(5, 10, -2));
+    let lightDirection = scene.lightDirection;
 
     let rtput = pow(unpack4x8unorm(hitRec.throughput).xyz, vec3f(2.2));
     let material = materials[hitRec.material];
