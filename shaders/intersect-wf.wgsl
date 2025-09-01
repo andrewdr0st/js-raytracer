@@ -233,7 +233,7 @@ fn hitTriangle(tri: Triangle, ray: Ray) -> HitRecord {
     }
     hr.t = t;
     hr.uv = vec2f(a * v2.u + b * v3.u + c * v1.u, a * v2.v + b * v3.v + c * v1.v);
-    hr.normal = a * v1.normal + b * v2.normal + c * v3.normal;
+    hr.normal = a * v2.normal + b * v3.normal + c * v1.normal;
     return hr;
 }
 
