@@ -9,6 +9,7 @@ let intersectPipeline;
 let shadePipeline;
 let shadowPipeline;
 let dispatchPipeline;
+let outputPipeline;
 
 let megaKernelPipeline;
 
@@ -156,8 +157,9 @@ async function createPipelines() {
     shadePipeline = new Pipeline("shade-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
     shadowPipeline = new Pipeline("shadow-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
     dispatchPipeline = new Pipeline("queuedispatch-wf.wgsl", wavefrontLayout, wavefrontBindGroups);
+    outputPipeline = new Pipeline("textureoutput.wgsl", wavefrontLayout, wavefrontBindGroups);
 
-    const pipelinePromises = [spawnPipeline.build(), intersectPipeline.build(), shadePipeline.build(), shadowPipeline.build(), dispatchPipeline.build()];
+    const pipelinePromises = [spawnPipeline.build(), intersectPipeline.build(), shadePipeline.build(), shadowPipeline.build(), dispatchPipeline.build(), outputPipeline.build()];
     await Promise.all(pipelinePromises);
 
     if (RUN_MEGA_KERNEL) {
