@@ -63,7 +63,7 @@ const PI = 3.14159265359;
     let outDir = hitRec.dir * -1;
     let halfVector = normalize(outDir + inDir);
     let ndotl = max(dot(hitRec.normal, inDir), 0);
-    let ambient = albedo * 0.03;
+    let ambient = albedo * 0.03 * rtput;
     let col = brdf(hitRec.normal, inDir, outDir, halfVector, albedo, material.roughness, material.metallic) * ndotl * rtput + ambient;
     let throughput = pack4x8unorm(vec4f(pow(col, vec3f(1.0 / 2.2)), 0));
     if (material.metallic > 0) {
@@ -79,7 +79,7 @@ const PI = 3.14159265359;
     } else {
         let imgW = textureDimensions(outputTexture).x;
         let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-        textureStore(outputTexture, imgPos, vec4f(pow(ambient * rtput, vec3f(1.0 / 2.2)), 1));
+        textureStore(outputTexture, imgPos, vec4f(pow(ambient, vec3f(1.0 / 2.2)), 1));
     }
 }
 

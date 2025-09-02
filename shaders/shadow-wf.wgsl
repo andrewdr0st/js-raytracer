@@ -43,7 +43,7 @@ const TMAX = 10000.0;
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
-@group(0) @binding(4) var<storage, read> objectInfos: array<ObjectInfo>;
+@group(0) @binding(4) var<uniform> objectInfos: array<ObjectInfo, 64>;
 @group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(3) var<storage, read_write> shadowQueue: array<Ray>;

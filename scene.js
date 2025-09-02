@@ -16,6 +16,7 @@ let sceneBuffer;
 
 const SCENE_BUFFER_BYTE_SIZE = 16;
 const TLAS_NODE_FIELD_COUNT = 8;
+const MAX_OBJECT_COUNT = 64;
 
 export class Scene {
     constructor() {
@@ -175,11 +176,12 @@ export class Scene {
     createObjectInfoBuffer() {
         objectInfoBuffer = device.createBuffer({
             label: "object info buffer",
-            size: OBJECT_INFO_BYTE_SIZE * this.objectCount,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+            size: OBJECT_INFO_BYTE_SIZE * MAX_OBJECT_COUNT,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
         let offset = 0;
-        for (let i = 0; i < this.objectCount; i++) {
+        let maxIters = Math.min(this.objectCount, MAX_OBJECT_COUNT);
+        for (let i = 0; i < maxIters; i++) {
             device.queue.writeBuffer(objectInfoBuffer, offset, this.objectList[i].infoData);
             offset += OBJECT_INFO_BYTE_SIZE;
         }
@@ -293,7 +295,7 @@ export function createSceneBindGroupLayout() {
             }, {//object info
                 binding: 4,
                 visibility: GPUShaderStage.COMPUTE,
-                buffer: { type: "read-only-storage" }
+                buffer: { type: "uniform" }
             }, {//materials
                 binding: 5,
                 visibility: GPUShaderStage.COMPUTE,

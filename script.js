@@ -106,7 +106,7 @@ async function loop(currentTime) {
 
     camera.init();
 
-    renderGPU(scene, staticRender);
+    renderGPU(scene);
 
     if (staticRender) {
         camera.updateStatic();
@@ -116,7 +116,7 @@ async function loop(currentTime) {
 }
 
 async function initGPU() {
-    if (await setupGPUDevice(canvas, staticRender)) {
+    if (await setupGPUDevice(canvas)) {
         await scene.setup(w, h);
         if (staticRender) {
             scene.camera.realtimeMode = false;
