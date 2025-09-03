@@ -96,16 +96,17 @@ export class Camera {
     }
 
     updateStatic() {
-        this.gridX += 8 * this.gridStepX;
-        if (this.gridX >= this.imgW) {
-            this.gridX = 0;
-            this.gridY += 8 * this.gridStepY;
-            if (this.gridY >= this.imgH) {
-                this.gridY = 0;
-                this.seed += 7;
-                this.frameCount++;
-            }
-        }
+        // this.gridX += 8 * this.gridStepX;
+        // if (this.gridX >= this.imgW) {
+        //     this.gridX = 0;
+        //     this.gridY += 8 * this.gridStepY;
+        //     if (this.gridY >= this.imgH) {
+        //         this.gridY = 0;
+        //         this.seed += 7;
+        //         this.frameCount++;
+        //     }
+        // }
+        this.seed++;
     }
 
     setP(x, y, theta) {

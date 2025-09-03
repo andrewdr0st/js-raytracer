@@ -39,11 +39,23 @@ struct QueueHeader {
         return;
     }
 
-    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * f32(id.x) + camera.pixelDeltaV * f32(id.y);
+    var rngState = camera.randomSeed;
+    let xRand = randomF(&rngState) - 0.5;
+    let yRand = randomF(&rngState) - 0.5; 
+
+    let pCenter = camera.topLeftPixel + camera.pixelDeltaU * (f32(id.x) + xRand) + camera.pixelDeltaV * (f32(id.y) + yRand);
 
     let ray = Ray(camera.pos, id.x + id.y * camera.imgW, normalize(pCenter - camera.pos), pack4x8unorm(vec4f(1, 1, 1, 0)));
     
     let rayQueueHeader = &queueHeaders[0];
     let index = atomicAdd(&rayQueueHeader.count, 1u);
     rayQueue[index] = ray;
+}
+
+fn randomF(state: ptr<function, u32>) -> f32 {
+    let s = (*state) * 747796405 + 2891336453;
+    *state = s;
+    var result = ((s >> ((s >> 28) + 4)) ^ s) * 277803737;
+    result = (result >> 22) ^ result;
+    return f32(result) / 4294967295.0;
 }
