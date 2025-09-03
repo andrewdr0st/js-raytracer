@@ -37,14 +37,22 @@ struct QueueHeader {
     clear: u32
 }
 
+struct Accumulation {
+    r: atomic<u32>,
+    g: atomic<u32>,
+    b: atomic<u32>,
+    count: atomic<u32>
+}
+
 const EPSILON = 0.00001;
 const TMAX = 10000.0;
+const WHITE = 65536.0;
 
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
 @group(0) @binding(4) var<uniform> objectInfos: array<ObjectInfo, 64>;
-@group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
+@group(1) @binding(1) var<storage, read_write> accumulationBuffer: array<Accumulation>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(3) var<storage, read_write> shadowQueue: array<Ray>;
 
@@ -60,11 +68,17 @@ const TMAX = 10000.0;
 
     let incomingLuminance = select(1, 0.33, t < TMAX);
     let color = pow(unpack4x8unorm(ray.throughput).xyz, vec3f(2.2)) * incomingLuminance;
-    let corrected = pow(color, vec3f(1.0 / 2.2));
 
-    let imgW = textureDimensions(outputTexture).x;
-    let imgPos = vec2u(ray.pixelIndex % imgW, ray.pixelIndex / imgW);
-    textureStore(outputTexture, imgPos, vec4f(corrected, 1));
+    storeColor(color, ray.pixelIndex);
+}
+
+fn storeColor(color: vec3f, index: u32) {
+    let ucolor = vec3u(color * vec3f(WHITE));
+    let acc = &accumulationBuffer[index];
+    atomicAdd(&acc.r, ucolor.r);
+    atomicAdd(&acc.g, ucolor.g);
+    atomicAdd(&acc.b, ucolor.b);
+    atomicAdd(&acc.count, 1u);
 }
 
 fn traverseTLAS(ray: Ray) -> f32 {

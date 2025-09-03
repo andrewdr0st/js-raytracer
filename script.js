@@ -7,7 +7,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext("webgpu");
 
 const blackBorders = false;
-const staticRender = false;
+const staticRender = true;
 const pixelScaleFactor = 1;
 
 let debugFramerate = false;
@@ -95,10 +95,10 @@ async function loop(currentTime) {
     if (debugFramerate) {
         console.log(1 / deltaTime);
     }
-    scene.update(deltaTime);
     let camera = scene.camera;
 
     if (!staticRender) {
+        scene.update(deltaTime);
         let moveVec = vec3.normalize(vec3.add(vec3.scale(camera.forward, cameraFVel), vec3.scale(camera.right, cameraRVel)));
         camera.pos = vec3.add(camera.pos, vec3.scale(moveVec, deltaTime * moveSpeed));
         camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];

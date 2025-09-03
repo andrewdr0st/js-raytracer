@@ -15,6 +15,7 @@ let megaKernelPipeline;
 
 let finalTexture;
 let accumulationBuffer;
+let accumulationBufferSize;
 
 let raytraceTextureLayout;
 let queueLayout;
@@ -77,6 +78,8 @@ export function renderGPU(scene) {
         encoder.copyBufferToBuffer(headerBuffer, 0, dispatchBuffer, 0);
 
         shadowPipeline.runIndirect(encoder, dispatchBuffer, QUEUE_HEADER_BYTE_SIZE * 2);
+
+        outputPipeline.run(encoder, Math.ceil(camera.imgW / 8), Math.ceil(camera.imgH / 8));
     }
 
     const canvasTexture = computeContext.getCurrentTexture();
@@ -175,13 +178,13 @@ function createRaytraceTextureBindGroup() {
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST
     });
 
-    let bufferSize = ACCUMULATION_SIZE * canvas.width * canvas.height
+    accumulationBufferSize = ACCUMULATION_SIZE * canvas.width * canvas.height
     accumulationBuffer = device.createBuffer({
         label: "accumulation buffer",
-        size: bufferSize,
+        size: accumulationBufferSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(accumulationBuffer, 0, new Uint8Array(bufferSize));
+    clearAccumulationBuffer();
 
     raytraceTextureBindGroup = device.createBindGroup({
         label: "ray trace texture bind group",
@@ -191,6 +194,10 @@ function createRaytraceTextureBindGroup() {
             { binding: 1, resource: { buffer: accumulationBuffer } }
         ]
     });
+}
+
+export function clearAccumulationBuffer() {
+    device.queue.writeBuffer(accumulationBuffer, 0, new Uint8Array(accumulationBufferSize));
 }
 
 function createQueueBindGroup() {

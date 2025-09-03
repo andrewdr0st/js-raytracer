@@ -34,12 +34,20 @@ struct SceneData {
     lightDirection: vec3f
 }
 
+struct Accumulation {
+    r: atomic<u32>,
+    g: atomic<u32>,
+    b: atomic<u32>,
+    count: atomic<u32>
+}
+
 const EPSILON = 0.000001;
 const PI = 3.14159265359;
+const WHITE = 65536.0;
 
 @group(0) @binding(5) var<uniform> materials: array<Material, 3>;
 @group(0) @binding(6) var<uniform> scene: SceneData;
-@group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
+@group(1) @binding(1) var<storage, read_write> accumulationBuffer: array<Accumulation>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
@@ -77,10 +85,17 @@ const PI = 3.14159265359;
         let index = atomicAdd(&shadowQueueHeader.count, 1u);
         shadowQueue[index] = shadowRay;
     } else {
-        let imgW = textureDimensions(outputTexture).x;
-        let imgPos = vec2u(hitRec.pixelIndex % imgW, hitRec.pixelIndex / imgW);
-        textureStore(outputTexture, imgPos, vec4f(pow(ambient, vec3f(1.0 / 2.2)), 1));
+        storeColor(ambient, hitRec.pixelIndex);
     }
+}
+
+fn storeColor(color: vec3f, index: u32) {
+    let ucolor = vec3u(color * vec3f(WHITE));
+    let acc = &accumulationBuffer[index];
+    atomicAdd(&acc.r, ucolor.r);
+    atomicAdd(&acc.g, ucolor.g);
+    atomicAdd(&acc.b, ucolor.b);
+    atomicAdd(&acc.count, 1u);
 }
 
 fn brdf(normal: vec3f, wi: vec3f, wo: vec3f, half: vec3f, albedo: vec3f, a: f32, metallic: f32) -> vec3f {

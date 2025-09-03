@@ -73,8 +73,16 @@ struct SceneData {
     lightDirection: vec3f
 }
 
+struct Accumulation {
+    r: atomic<u32>,
+    g: atomic<u32>,
+    b: atomic<u32>,
+    count: atomic<u32>
+}
+
 const EPSILON = 0.000001;
 const TMAX = 10000.0;
+const WHITE = 65536.0;
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
@@ -82,7 +90,7 @@ const TMAX = 10000.0;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
 @group(0) @binding(4) var<uniform> objectInfos: array<ObjectInfo, 64>;
 @group(0) @binding(6) var<uniform> scene: SceneData;
-@group(1) @binding(0) var outputTexture: texture_storage_2d<rgba8unorm, write>;
+@group(1) @binding(1) var<storage, read_write> accumulationBuffer: array<Accumulation>;
 @group(2) @binding(0) var<storage, read_write> queueHeaders: array<QueueHeader>;
 @group(2) @binding(1) var<storage, read_write> rayQueue: array<Ray>;
 @group(2) @binding(2) var<storage, read_write> hitQueue: array<HitRecord>;
@@ -111,9 +119,17 @@ const TMAX = 10000.0;
     } else {
         let sun = step(0.99, dot(scene.lightDirection, ray.dir));
         let c = mix(camera.backgroundColor, vec3f(1), sun) * pow(unpack4x8unorm(ray.throughput).xyz, vec3f(2.2));
-        let imgPos = vec2u(ray.pixelIndex % camera.imgW, ray.pixelIndex / camera.imgW);
-        textureStore(outputTexture, imgPos, vec4f(pow(c, vec3f(1.0 / 2.2)), 1));
+        storeColor(c, ray.pixelIndex);
     }
+}
+
+fn storeColor(color: vec3f, index: u32) {
+    let ucolor = vec3u(color * vec3f(WHITE));
+    let acc = &accumulationBuffer[index];
+    atomicAdd(&acc.r, ucolor.r);
+    atomicAdd(&acc.g, ucolor.g);
+    atomicAdd(&acc.b, ucolor.b);
+    atomicAdd(&acc.count, 1u);
 }
 
 fn traverseTLAS(ray: Ray, hitRec: HitRecord) -> HitRecord {
