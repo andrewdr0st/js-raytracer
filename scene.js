@@ -14,7 +14,7 @@ let objectInfoBuffer;
 let materialsBuffer;
 let sceneBuffer;
 
-const SCENE_BUFFER_BYTE_SIZE = 16;
+const SCENE_BUFFER_BYTE_SIZE = 32;
 const TLAS_NODE_FIELD_COUNT = 8;
 const MAX_OBJECT_COUNT = 64;
 
@@ -29,6 +29,8 @@ export class Scene {
         this.objectList = [];
         this.objectCount = 0;
         this.sunDirection = new Float32Array([0, 1, 0]);
+        this.randomSeed = new Uint32Array([17]);
+        this.backgroundColor = new Float32Array([0, 0, 0]);
     }
 
     async setup(w, h) {
@@ -54,7 +56,8 @@ export class Scene {
     }
 
     update(deltaTime) {
-        device.queue.writeBuffer(sceneBuffer, 0, this.sunDirection);
+        this.randomSeed[0] += 7;
+        device.queue.writeBuffer(sceneBuffer, 12, this.randomSeed);
     }
 
     /**
@@ -131,6 +134,8 @@ export class Scene {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
         device.queue.writeBuffer(sceneBuffer, 0, this.sunDirection);
+        device.queue.writeBuffer(sceneBuffer, 12, this.randomSeed);
+        device.queue.writeBuffer(sceneBuffer, 16, this.backgroundColor);
     }
 
     createVertexBuffer() {

@@ -70,7 +70,9 @@ struct HitRecord {
 }
 
 struct SceneData {
-    lightDirection: vec3f
+    lightDirection: vec3f,
+    randomSeed: u32,
+    backgroundColor: vec3f
 }
 
 struct Accumulation {
@@ -84,7 +86,6 @@ const EPSILON = 0.000001;
 const TMAX = 10000.0;
 const WHITE = 65536.0;
 
-@group(0) @binding(0) var<uniform> camera: Camera;
 @group(0) @binding(1) var<storage, read> vertices: array<Vertex>;
 @group(0) @binding(2) var<storage, read> triangles: array<Triangle>;
 @group(0) @binding(3) var<storage, read> bvh: array<BVHNode>;
@@ -118,7 +119,7 @@ const WHITE = 65536.0;
         hitQueue[index] = hr;
     } else {
         let sun = step(0.99, dot(scene.lightDirection, ray.dir));
-        let c = mix(camera.backgroundColor, vec3f(1), sun) * pow(unpack4x8unorm(ray.throughput).xyz, vec3f(2.2));
+        let c = mix(scene.backgroundColor, vec3f(5), sun) * pow(unpack4x8unorm(ray.throughput).xyz, vec3f(2.2));
         storeColor(c, ray.pixelIndex);
     }
 }

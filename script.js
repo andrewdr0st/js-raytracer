@@ -96,9 +96,9 @@ async function loop(currentTime) {
         console.log(1 / deltaTime);
     }
     let camera = scene.camera;
+    scene.update(deltaTime);
 
     if (!staticRender) {
-        scene.update(deltaTime);
         let moveVec = vec3.normalize(vec3.add(vec3.scale(camera.forward, cameraFVel), vec3.scale(camera.right, cameraRVel)));
         camera.pos = vec3.add(camera.pos, vec3.scale(moveVec, deltaTime * moveSpeed));
         camera.lookTo = [Math.sin(cameraTheta) * Math.cos(cameraPhi), Math.sin(cameraPhi), Math.cos(cameraTheta) * Math.cos(cameraPhi)];

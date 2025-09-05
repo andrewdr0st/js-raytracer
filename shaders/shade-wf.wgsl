@@ -31,7 +31,9 @@ struct Material {
 }
 
 struct SceneData {
-    lightDirection: vec3f
+    lightDirection: vec3f,
+    randomSeed: u32,
+    backgroundColor: vec3f
 }
 
 struct Accumulation {
@@ -65,7 +67,9 @@ const WHITE = 65536.0;
 
     let rtput = pow(unpack4x8unorm(hitRec.throughput).xyz, vec3f(2.2));
     let material = materials[hitRec.material];
-    let inDir = select(lightDirection, reflect(hitRec.dir, hitRec.normal), material.metallic > 0);
+    var rngState = scene.randomSeed * (id.x + 7) * (id.y + 91);
+    let rDir = normalize(hitRec.normal + randomDir(&rngState));
+    let inDir = select(rDir, reflect(hitRec.dir, hitRec.normal), material.metallic > 0);
     let tc = vec2u(u32(hitRec.uv.x * 16.0), u32(hitRec.uv.y * 16.0));
     let albedo = pow(textureLoad(textures16, tc, hitRec.texture, 0).xyz, vec3f(2.2));
     let outDir = hitRec.dir * -1;
@@ -80,10 +84,14 @@ const WHITE = 65536.0;
         let index = atomicAdd(&rayQueueHeader.count, 1u);
         rayQueue[index] = reflectRay;
     } else if (ndotl > 0) {
-        let shadowRay = Ray(hitRec.pos, hitRec.pixelIndex, lightDirection, throughput);
-        let shadowQueueHeader = &queueHeaders[2];
-        let index = atomicAdd(&shadowQueueHeader.count, 1u);
-        shadowQueue[index] = shadowRay;
+        let reflectRay = Ray(hitRec.pos, hitRec.pixelIndex, rDir, throughput);
+        let rayQueueHeader = &queueHeaders[0];
+        let index = atomicAdd(&rayQueueHeader.count, 1u);
+        rayQueue[index] = reflectRay;
+        // let shadowRay = Ray(hitRec.pos, hitRec.pixelIndex, lightDirection, throughput);
+        // let shadowQueueHeader = &queueHeaders[2];
+        // let index = atomicAdd(&shadowQueueHeader.count, 1u);
+        // shadowQueue[index] = shadowRay;
     } else {
         storeColor(ambient, hitRec.pixelIndex);
     }
@@ -96,6 +104,22 @@ fn storeColor(color: vec3f, index: u32) {
     atomicAdd(&acc.g, ucolor.g);
     atomicAdd(&acc.b, ucolor.b);
     atomicAdd(&acc.count, 1u);
+}
+
+fn randomF(state: ptr<function, u32>) -> f32 {
+    let s = (*state) * 747796405 + 2891336453;
+    *state = s;
+    var result = ((s >> ((s >> 28) + 4)) ^ s) * 277803737;
+    result = (result >> 22) ^ result;
+    return f32(result) / 4294967295.0;
+}
+
+fn randomDir(state: ptr<function, u32>) -> vec3f {
+    let theta = randomF(state) * PI;
+    let z = randomF(state) * 2 - 1.0;
+    let x = sqrt(1 - z * z) * cos(theta);
+    let y = sqrt(1 - z * z) * sin(theta);
+    return vec3f(x, y, z);
 }
 
 fn brdf(normal: vec3f, wi: vec3f, wo: vec3f, half: vec3f, albedo: vec3f, a: f32, metallic: f32) -> vec3f {
